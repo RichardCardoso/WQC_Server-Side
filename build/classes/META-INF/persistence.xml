@@ -1,0 +1,46 @@
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+	version="2.0">
+
+	<persistence-unit name="wqc2.0-database">
+		<description>
+            Persistance unit for WQC2.0's database
+        </description>
+        
+		<provider>org.hibernate.ejb.HibernatePersistence</provider>
+		
+		<class>com.richard.weger.wqc.domain.AutomaticItem</class>
+		<class>com.richard.weger.wqc.domain.AutomaticReport</class>
+		<class>com.richard.weger.wqc.domain.CheckReport</class>
+		<class>com.richard.weger.wqc.domain.DrawingRef</class>
+		<class>com.richard.weger.wqc.domain.Item</class>
+		<class>com.richard.weger.wqc.domain.ItemReport</class>
+		<class>com.richard.weger.wqc.domain.Mark</class>
+		<class>com.richard.weger.wqc.domain.Page</class>
+		<class>com.richard.weger.wqc.domain.Picture</class>
+		<class>com.richard.weger.wqc.domain.Project</class>
+		<class>com.richard.weger.wqc.domain.Report</class>
+		
+		<properties>
+			<property name="javax.persistence.jdbc.driver"
+				value="com.mysql.jdbc.Driver" />
+			<property name="javax.persistence.jdbc.url"
+				value="jdbc:mysql://localhost:3306/wqc2.0" />
+			<property name="javax.persistence.jdbc.user" value="root" />
+			<property name="javax.persistence.jdbc.password"
+				value="qwertyui" />
+
+			<property name="hibernate.dialect"
+				value="org.hibernate.dialect.MySQLDialect" />
+			<property name="hibernate.show_sql" value="true" />
+			<property name="hibernate.format_sql" value="true" />
+			
+			<!--  updates the database and create the table if needed -->
+			<property name="hibernate.hbm2ddl.auto" value="update" />
+			
+		</properties>
+
+	</persistence-unit>
+
+</persistence>

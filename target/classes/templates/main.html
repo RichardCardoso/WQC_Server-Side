@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>WQC-2.0 - Admin</title>
+<link
+	href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css"
+	rel="stylesheet" id="bootstrap-css">
+<script
+	src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<!------ Include the above in your HEAD tag ---------->
+</head>
+<body>
+	<div id="fullscreen_bg" class="fullscreen_bg">
+		<div class="container">
+			<div>
+				<div class="row">
+					<div class="col-md-4">
+						<img class="pull-right"	th:src="@{/img/weger_logo.png}"/>
+					</div>
+					<div class="col-md-8">
+						<div class="card">
+							<!-- h1 class="glyphicon glyphicon-wrench"
+								style="font-size: 14em; color: #00001a"></h1 -->
+							<h3 style="margin-top: 0; color: #00001a">Welcome</h3>
+							<h2 style="margin-top: 0; color: #00001a">WQC-2.0's Manager
+								HomePage</h2>
+						</div>
+					</div>
+				</div>
+				
+				<div class="row">
+					<div class="col-md-12 text-center">
+						<span class="h2  text-danger" th:text="${message}"></span>
+					</div>
+				</div>
+
+				<br><br><br>
+
+				<div class="row text-center">
+					<!-- flight section -->
+					<div class="col-md-4">
+						<div class="card">
+							<h1 class="glyphicon glyphicon-tag"
+								style="font-size: 12em; color: #00001a"></h1>
+							<h2 style="margin-top: 0; color: #00001a">
+								<a th:href="@{/web/devices/}"
+									class="btn btn-sm btn-primary btn-block" role="button">Devices</a>
+							</h2>
+						</div>
+					</div>
+
+					<div class="col-md-4">
+						<div class="card">
+							<h1 class="glyphicon glyphicon-th-list"
+								style="font-size: 12em; color: #00001a"></h1>
+							<h2 style="margin-top: 0; color: #00001a">
+								<a th:href="@{/web/projects/}" class="btn btn-sm btn-primary btn-block"
+									role="button">Projects</a>
+							</h2>
+						</div>
+					</div>
+					<div class="col-md-4">
+						<div class="card">
+							<h1 class="glyphicon glyphicon-wrench"
+								style="font-size: 12em; color: #00001a"></h1>
+							<h2 style="margin-top: 0; color: #00001a">
+								<a th:href="@{/web/settings/}"
+									class="btn btn-sm btn-primary btn-block" role="button">Settings</a>
+							</h2>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

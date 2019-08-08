@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>WQC-2.0 - Admin</title>
+<link
+	href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css"
+	rel="stylesheet" id="bootstrap-css">
+<script
+	src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<!------ Include the above in your HEAD tag ---------->
+</head>
+<body>
+	<div class="container">
+		<form class="form" th:action="@{/web/drawings}">
+			<input type="hidden" th:value="${project.id}" name="parentid" id="parentid">
+			<fieldset>
+				<legend> WQC-2.0 - Scanned project drawings reports </legend>
+				<div class="col-md-12 text-right">
+					<button id="" name=""
+						class="btn btn-primary pull-right" value="">back</button>
+						<!-- 
+					<button id="operation" name="operation"
+						class="btn btn-primary pull-right" value="add">add</button>
+						-->
+				</div>
+			</fieldset>
+		</form>
+		<fieldset>
+			<table class="table">
+				<thead>
+					<tr>
+						<th scope="col">Drawing reference</th>
+						<th scope="col">Report reference</th>
+						<th scope="col">Last update</th>
+						<th scope="col">File type</th>
+						<th scope="col">Is preview possible</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="report:${reports}">
+						<td scope="col" th:text="${project.reference} + '_Z' + ${drawing.dnumber}">
+						</td>
+						<td scope="col">
+							<a target="blank" th:href="@{/web/reports/} + ${report.id} + '/'" th:text="${report.reference}">
+							</a>
+						</td>
+						<td scope="col" th:text="${#dates.format(report.lastModifiedDate, 'yyyy-MM-dd HH:mm:ss')}">
+						</td>
+						<td scope="col">
+							<th:block th:if="${report.getClass().name =='com.richard.weger.wqc.domain.ItemReport'}">
+								.xls
+							</th:block>
+							<th:block th:if="${report.getClass().name =='com.richard.weger.wqc.domain.CheckReport'}">
+								.pdf
+							</th:block>
+						</td>
+						<td scope="col">
+							<th:block th:if="${report.getClass().name =='com.richard.weger.wqc.domain.ItemReport'}">
+								No
+							</th:block>
+							<th:block th:if="${report.getClass().name =='com.richard.weger.wqc.domain.CheckReport'}">
+								Yes
+							</th:block>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</fieldset>
+	</div>
+</body>
+</html>
