@@ -1,24 +1,16 @@
 package com.richard.weger.wqc.faccade;
 
-import static com.richard.weger.wqc.util.Logger.customLog;
-import static com.richard.weger.wqc.util.Logger.requestLog;
-
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,46 +24,31 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.richard.weger.wqc.appconstants.FactoryAppConstants;
 import com.richard.weger.wqc.domain.Device;
 import com.richard.weger.wqc.domain.DomainEntity;
-import com.richard.weger.wqc.domain.ParamConfigurations;
-import com.richard.weger.wqc.domain.ParentAwareEntity;
 import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.Role;
-import com.richard.weger.wqc.exception.DuplicatedDataException;
-import com.richard.weger.wqc.firebase.FirebaseMessagingHelper;
-import com.richard.weger.wqc.repository.DeviceRepository;
-import com.richard.weger.wqc.repository.DomainEntityRepository;
-import com.richard.weger.wqc.repository.IRepository;
-import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
-import com.richard.weger.wqc.repository.ParentAwareEntityRepository;
-import com.richard.weger.wqc.repository.RoleRepository;
+import com.richard.weger.wqc.result.AbstractResult;
+import com.richard.weger.wqc.result.EmptyResult;
+import com.richard.weger.wqc.result.ResultService;
+import com.richard.weger.wqc.result.ResultWithContent;
+import com.richard.weger.wqc.result.SingleObjectResult;
+import com.richard.weger.wqc.result.SuccessResult;
+import com.richard.weger.wqc.service.DeviceService;
 import com.richard.weger.wqc.service.EntityService;
-import com.richard.weger.wqc.service.EntityServiceResult;
-import com.richard.weger.wqc.service.ItemService;
+import com.richard.weger.wqc.service.FileService;
 import com.richard.weger.wqc.service.ProjectService;
-import com.richard.weger.wqc.service.QrTextHandler;
+import com.richard.weger.wqc.service.RoleService;
 
 @RestController
 @RequestMapping("/rest")
 public class RestFaccade {
-	
-	@Autowired private DomainEntityRepository rep;
-	@Autowired private ParentAwareEntityRepository parentRep;
-	
-	@Autowired private ParamConfigurationsRepository paramConfigsRep;
-	@Autowired private DeviceRepository deviceRep;
-	@Autowired private RoleRepository roleRep;
-	
+		
 	@Autowired private ProjectService projectService;
-	@Autowired private ItemService itemService;
-	
-	@Autowired private QrTextHandler handler;
-	
+	@Autowired private DeviceService deviceService;
+	@Autowired private RoleService roleService;
+	@Autowired private FileService fileService;
 	@Autowired private EntityService entityService;
-
-	@Autowired private FirebaseMessagingHelper firebase;
 	
 	// REST METHODS - BEGIN
 	// -----------------------------------------------------------------------------------------------
@@ -79,59 +56,56 @@ public class RestFaccade {
 	@GetMapping(value = "/qrcode/projects")
 	public ResponseEntity<Project> projectLoad(@RequestParam(value = "qrcode") String qrCode) {
 		
-		Project project;
-
-		project = projectService.getSingle(qrCode.replace("\\", "").replace("/", ""));
-
-		if (project != null) {
-			return new ResponseEntity<Project>(project, HttpStatus.OK);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+		AbstractResult res = projectService.getSingle(qrCode);
+		
+		if (res instanceof ResultWithContent) {
+			Project project = ResultService.getSingleResult(res, Project.class);
+			return new ResponseEntity<>(project, HttpStatus.OK);
 		}
+		
+		return entityService.objectlessReturn(res);
+		
 	}
 
 	@PostMapping(value = "/qrcode/projects")
 	public ResponseEntity<Project> projectCreate(@RequestParam(value = "qrcode") String qrCode, UriComponentsBuilder b) {
-		customLog(new Throwable().getStackTrace(), "Creating project using Qr Code.", getClass());
 
-		// Declaração de variáveis
-		int result;
-		requestLog(new Throwable().getStackTrace(), getClass());
-		result = projectService.createSingle(qrCode.replace("\\", "").replace("/", ""));
+		AbstractResult res;
+		res = projectService.createSingle(qrCode);
 
-		if (result >= 1) {
-			// Fechar a conexão
+		if (res instanceof SuccessResult) {
 			URI uri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/rest/scan/projects/{qrCode}")
 					.buildAndExpand(qrCode.replace("/", "").replace("\\","")).toUri();
 			return ResponseEntity.created(uri).build();
-		} else {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		}
-
+		
+		return entityService.objectlessReturn(res);
 	}
 	
 	@GetMapping(value = "/devices/{deviceid}")
 	public ResponseEntity<Device> deviceLoadWithAndroidId(@PathVariable(value = "deviceid") String deviceid) {
 
-		Device device = deviceRep.getByDeviceid(deviceid);
-
-		if (device != null) {
-			return new ResponseEntity<Device>(device, HttpStatus.OK);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+		AbstractResult res = deviceService.getSingle(deviceid);
+		
+		if (res instanceof ResultWithContent) {
+			Device device = ResultService.getSingleResult(res, Device.class);
+			return new ResponseEntity<>(device, HttpStatus.OK);
 		}
+		
+		return entityService.objectlessReturn(res);
 	}
 	
 	@GetMapping(value = "/roles/{roleDescription}")
 	public ResponseEntity<Role> roleLoadByDescription(@PathVariable(value = "roleDescription") String roleDescription) {
 
-		Role role = roleRep.getByDescription(roleDescription);
+		AbstractResult res = roleService.getByDescription(roleDescription);
 
-		if (role != null) {
-			return new ResponseEntity<Role>(role, HttpStatus.OK);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+		if (res instanceof ResultWithContent) {
+			Role role = ResultService.getSingleResult(res, Role.class);
+			return new ResponseEntity<>(role, HttpStatus.OK);
 		}
+		
+		return entityService.objectlessReturn(res);
 	}
 	
 	@GetMapping(value="/{entity}")
@@ -140,35 +114,28 @@ public class RestFaccade {
 			@PathVariable(value = "entity") String entityName
 			) {
 		
-		List<DomainEntity> entities = null;
+		AbstractResult res = entityService.entitiesList(parentid, entityName);
 		
-		entityName = entityName.substring(0, entityName.length() - 1);
-		
-		if(parentid != null && parentid > 0) {
-			List<ParentAwareEntity> list = parentRep.getAllByParentIdAndTypeStartingWith(parentid, entityName); 
-			entities = new ArrayList<DomainEntity>();
-			entities.addAll(list);
-		} else {
-			entities = rep.getAllByTypeStartingWith(entityName);
+		if (res instanceof ResultWithContent) {
+			List<DomainEntity> list = ResultService.getMultipleResult(res, DomainEntity.class);
+			return new ResponseEntity<>(list, HttpStatus.OK);
 		}
 		
-		if(entities == null) {
-			entities = new ArrayList<DomainEntity>();
-		}
-		
-		return new ResponseEntity<List<DomainEntity>>(entities, HttpStatus.OK);
+		return entityService.objectListReturn(res);
 		
 	}
 	
 	@GetMapping(value="/{entity}/{id}")
 	public ResponseEntity<DomainEntity> entityGet(@PathVariable(value="id") Long id) {
-		DomainEntity e = rep.getById(id);
 		
-		if(e == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-		} else {
+		AbstractResult res = entityService.getEntity(id);
+		
+		if(res instanceof ResultWithContent) {
+			DomainEntity e = ResultService.getSingleResult(res, DomainEntity.class);
 			return new ResponseEntity<DomainEntity>(e, HttpStatus.OK);
 		}
+		
+		return entityService.objectlessReturn(res);
 	}
 			
 	@RequestMapping(value="/{entity}", method = {RequestMethod.POST, RequestMethod.PUT})
@@ -178,48 +145,24 @@ public class RestFaccade {
 			@RequestBody T entity,
 			@RequestParam(value="qrcode") String qrcode) {
 		
-		HttpHeaders headers = new HttpHeaders();
-		String message = null;
-		boolean existingEntity = false;
-		EntityServiceResult<T> result = new EntityServiceResult<>();
+		AbstractResult res;
 		
-		try {
-			result = entityService.postEntity(entity, parentid, entityName);
-			existingEntity = result.isExistingEntity();
-			message = result.getMessage();
-		} catch (Exception ex) {
-			if(ex instanceof ObjectOptimisticLockingFailureException) {
-				return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
-			} else if (ex instanceof DuplicatedDataException) {
-				return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(null);
-			} else {
-				message = ex.getMessage();
-			}
-		}
+		res = entityService.postEntity(entity, parentid, entityName, qrcode);
 		
-		if(message != null) {
-			customLog(new Throwable().getStackTrace(), message, getClass());
-			headers.add("message", message);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(null);
-		} else {
-			Long id = 0L;
+		if (res instanceof SuccessResult) {
+			SingleObjectResult<DomainEntity> oRes = ResultService.getSingleResultContainer(res, DomainEntity.class);
 			
-			firebase.sendUpdateNotice(qrcode);
-			
-			if(result.getEntity() != null) {
-				id = result.getEntity().getId();
-			}
-			if(existingEntity) {
-				customLog(new Throwable().getStackTrace(), "Updated entity " + entityName + " with id " + id, getClass());
+			if(oRes.isUpdated()) {
 				return new ResponseEntity<T>(entity, HttpStatus.OK);
 			} else {
-				customLog(new Throwable().getStackTrace(), "Created entity " + entityName + " with new id " + id, getClass());
 				URI uri = ServletUriComponentsBuilder.fromCurrentContextPath()
 						.path("/rest/{entity}/{id}")
-						.buildAndExpand(entityName, id).toUri();
+						.buildAndExpand(entityName, oRes.getObject().getId()).toUri();
 				return ResponseEntity.created(uri).build();
 			}
 		}
+		
+		return entityService.objectlessReturn(res);
 		
 	}
 	
@@ -227,35 +170,14 @@ public class RestFaccade {
 	public ResponseEntity<DomainEntity> entityDelete(
 			@RequestParam(value="id") Long id, @RequestParam(value="version") Long version,
 			@RequestParam(value="qrcode") String qrcode) {
-
-		boolean result;
 		
-		try {
-			DomainEntity e = rep.getById(id);
-			if(e.getVersion() != version) {
-				throw new ObjectOptimisticLockingFailureException(e.getClass(), id);
-			}
-			rep.deleteById(id);
-		} catch (Exception ex) {
-			if(ex instanceof ObjectOptimisticLockingFailureException) {
-				return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
-			} else {
-				String message = ex.getMessage();
-				HttpHeaders headers = new HttpHeaders();
-				headers.add("message", message);
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(null);
-			}
-		}
-		
-		result = (rep.getById(id) == null);
+		AbstractResult res = entityService.deleteEntity(id, version, qrcode);
 
-		if (result) {
-			firebase.sendUpdateNotice(qrcode);
+		if (res instanceof SuccessResult) {
 			return ResponseEntity.status(HttpStatus.OK).body(null);
-		} else {
-			return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
 		}
-
+		
+		return entityService.objectlessReturn(res);
 	}
 
 	@PostMapping(value = "/picture", consumes = {"multipart/form-data" } )
@@ -265,64 +187,72 @@ public class RestFaccade {
 			@RequestParam(value = "pictype") int pictureType,
 			@RequestParam(value = "id", required = false) Long itemId ) {
 
-		HttpHeaders httpHeaders;
-		int result = 0;
+		AbstractResult res;
+		res = fileService.pictureUpload(qrCode, fileName, file, pictureType, itemId);
 
-		httpHeaders = new HttpHeaders();
-		if(pictureType == 0 && itemId > 0) {
-			result = itemService.pictureUpload(qrCode, fileName, file, httpHeaders);
-		} else if (pictureType == 1) {
-			result = projectService.generalPictureUpload(qrCode, fileName, file, httpHeaders);
+		if (res instanceof SuccessResult) {
+			String newName = FilenameUtils.removeExtension(ResultService.getSingleResult(res, File.class).getName());
+			return ResponseEntity.ok().headers(fileService.getHeadersWithFilenames(fileName, newName)).body(null);
 		}
-
-		if (result == 1) {
-			return ResponseEntity.ok().headers(httpHeaders).body(null);
-		} else {
-			if(pictureType == 0 && (itemId == 0)) {
-				httpHeaders.add("message", "Zeroed itemId '" + itemId + "'");
-			}
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(httpHeaders).body(null);
-		}
+		
+		return entityService.objectlessReturn(res);
 	}
 
 	@GetMapping(value = "/pdfdocument")
 	public ResponseEntity<InputStreamResource> getPdf(
-			@RequestParam(value = "filename") String fileName,
+			@RequestParam(value = "filename") String filename,
 			@RequestParam(value = "qrcode") String qrcode) {
-		customLog(new Throwable().getStackTrace(), "Sending pdf file " + fileName + " to the client.", getClass());
-		HttpHeaders headers = new HttpHeaders();
-		ByteArrayInputStream pdf;
-		Map<String, String> mapValues;
-		ParamConfigurations conf;
 		
-		conf = paramConfigsRep.getDefaultConfig();
-
-		if (!fileName.endsWith(".pdf")) {
-			fileName = fileName.concat(".pdf");
-		}
-
-		headers.add("Content-Disposition", "inline; filename=" + fileName);
-		mapValues = handler.getParameters(qrcode);
-		String filePath = "//"
-				.concat(conf.getServerPath())
-				.concat(conf.getRootPath())
-				.concat(mapValues.get(FactoryAppConstants.getAppConstants().getTECHNICAL_PATH_KEY()))
-				.concat(fileName);
-		try {
-			pdf = new ByteArrayInputStream(Files.readAllBytes(new File(filePath).toPath()));
-		} catch (IOException e) {
-			customLog(new Throwable().getStackTrace(),"There was a problem while trying to access the following file: '" + filePath + "'! Creation proccess aborted!", getClass());
-			e.printStackTrace();
+		HttpHeaders headers;
+		AbstractResult res;
+		
+		headers = new HttpHeaders();
+		headers.add("Content-Disposition", "inline; filename=" + filename);
+		
+		res = fileService.getOriginalPdf(filename, qrcode);
+		
+		if (res instanceof EmptyResult) {
+			headers.add("fileName", filename);
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(null);
+		} else if(res instanceof SingleObjectResult) {
 			return ResponseEntity.ok()
 					.headers(headers)
 					.contentType(MediaType.APPLICATION_PDF)
+					.body(ResultService.getSingleResult(res, InputStreamResource.class));
+		} else {
+			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.headers(headers)
 					.body(null);
-//			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		}
-		return ResponseEntity.ok()
-				.headers(headers)
-				.contentType(MediaType.APPLICATION_PDF)
-				.body(new InputStreamResource(pdf));
+		
+	}
+	
+	@GetMapping(value = "/picture")
+	public ResponseEntity<InputStreamResource> getPicture(
+			@RequestParam(value = "filename") String filename,
+			@RequestParam(value = "qrcode") String qrcode) {
+		HttpHeaders headers;
+		
+		headers = new HttpHeaders();
+		headers.add("Content-Disposition", "inline; filename=" + filename);
+		
+		AbstractResult res = fileService.getPicture(filename, qrcode);
+
+		if (res instanceof EmptyResult) {
+			headers.add("fileName", filename);
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(null);
+		} else if (res instanceof SingleObjectResult) {
+			InputStreamResource iRes = ResultService.getSingleResult(res, InputStreamResource.class);
+			headers.add("LastModified", fileService.getLastModifiedDate(iRes).toString());
+			return ResponseEntity.ok().headers(headers).contentType(MediaType.IMAGE_JPEG)
+					.body(iRes);
+		} else {
+			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.headers(headers)
+					.body(null);
+		}
 	}
 
 	@GetMapping(value = "/pictures")
@@ -330,51 +260,9 @@ public class RestFaccade {
 			@RequestParam(value = "qrcode") String qrCode,
 			@RequestParam(value = "pictype") int pictureType) {
 		
-		List<String> existing = projectService.getExistingPictures(qrCode, pictureType);
+		List<String> existing = fileService.getExistingPictures(qrCode, pictureType);
 
 		return new ResponseEntity<List<String>>(existing, HttpStatus.OK);
-	}
-
-	@GetMapping(value = "/picture")
-	public ResponseEntity<InputStreamResource> getPicture(
-			@RequestParam(value = "filename") String fileName,
-			@RequestParam(value = "qrcode") String qrText) {
-		customLog(new Throwable().getStackTrace(), ": Sending jpg file " + fileName + " to the client.", getClass());
-		HttpHeaders headers = new HttpHeaders();
-		ByteArrayInputStream jpg;
-		Map<String, String> mapValues;
-		ParamConfigurations conf;
-		
-		conf = paramConfigsRep.getDefaultConfig();
-
-		mapValues = handler.getParameters(qrText);
-
-		if (!fileName.endsWith(".jpg")) {
-			fileName = fileName.concat(".jpg");
-		}
-
-		headers.add("Content-Disposition", "inline; filename=" + fileName);
-		String filePath = "//"
-				.concat(conf.getServerPath())
-				.concat(conf.getRootPath())
-				.concat(mapValues.get(FactoryAppConstants.getAppConstants().getCOMMON_PATH_KEY()))
-				.concat("Fotos/")
-				.concat(fileName);
-
-		File file = new File(filePath);
-		if (!file.exists()) {
-			headers = new HttpHeaders();
-			headers.add("fileName", fileName);
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(null);
-		}
-		try {
-			jpg = new ByteArrayInputStream(Files.readAllBytes(new File(filePath).toPath()));
-		} catch (IOException e) {
-			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-		}
-		return ResponseEntity.ok().headers(headers).contentType(MediaType.IMAGE_JPEG)
-				.body(new InputStreamResource(jpg));
 	}
 
 	// REST METHODS - END

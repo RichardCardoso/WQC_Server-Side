@@ -28,7 +28,7 @@ public class ProjectHelper {
 			}
 		}
 		if(parent != null) {
-			entity.getParent().setId(parent.getId());
+			entity.getParent(DomainEntity.class).setId(parent.getId());
 		}
 		
 	}

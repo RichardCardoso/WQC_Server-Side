@@ -7,6 +7,7 @@ import javax.persistence.ManyToOne;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+@SuppressWarnings("serial")
 @Entity
 //@EntityListeners(ParentAwareEntityListener.class)
 public abstract class ParentAwareEntity extends AuditableEntity {
@@ -20,7 +21,7 @@ public abstract class ParentAwareEntity extends AuditableEntity {
 
 	@JsonIgnore
 	@SuppressWarnings("unchecked")
-	public <T extends DomainEntity> T getParent() {
+	public <T extends DomainEntity> T getParent(Class<T> clz) {
 		return (T) parent;
 	}
 

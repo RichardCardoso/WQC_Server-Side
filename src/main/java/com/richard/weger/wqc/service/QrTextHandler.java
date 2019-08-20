@@ -3,6 +3,8 @@ package com.richard.weger.wqc.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,12 @@ import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
 
 @Service
 public class QrTextHandler {
+	
+	Logger logger;
+	
+	public QrTextHandler() {
+		logger = Logger.getLogger(QrTextHandler.class);
+	}
 	
 	@Autowired private ParamConfigurationsRepository rep;
 
@@ -33,6 +41,8 @@ public class QrTextHandler {
 		ParamConfigurations conf = rep.getDefaultConfig();
 		AppConstants appconst = FactoryAppConstants.getAppConstants();
 		Map<String, String> mapValues = new HashMap<>();
+		
+		qrText = qrText.replace("\\", "").replace("/", "");
 
 		try {
 			StringBuilder sb = new StringBuilder();
@@ -83,6 +93,11 @@ public class QrTextHandler {
 
 			return mapValues;
 		} catch (Exception e) {
+			if(Strings.isEmpty(qrText)) {
+				logger.fatal("A null qr code was received!", e);
+			} else {
+				logger.fatal("An error has ocurred while reading the following qr code --> " + qrText, e);
+			}
 			return null;
 		}
 	}
@@ -93,16 +108,25 @@ public class QrTextHandler {
 
 	public String createQrText(Project project) {
 		// qr_text_sample: \17-1-435_Z_1_T_1
-		StringBuilder sb = new StringBuilder();
-		String projectNumber = project.getReference();
-		int drawingNumber = project.getDrawingRefs().get(0).getDnumber();
-		int partNumber = project.getDrawingRefs().get(0).getParts().get(0).getNumber();
-		sb.append('\\');
-		sb.append(projectNumber);
-		sb.append("_Z_");
-		sb.append(drawingNumber);
-		sb.append("_T_");
-		sb.append(partNumber);
-		return sb.toString();
+		try {
+			StringBuilder sb = new StringBuilder();
+			String projectNumber = project.getReference();
+			int drawingNumber = project.getDrawingRefs().get(0).getDnumber();
+			int partNumber = project.getDrawingRefs().get(0).getParts().get(0).getNumber();
+			sb.append('\\');
+			sb.append(projectNumber);
+			sb.append("_Z_");
+			sb.append(drawingNumber);
+			sb.append("_T_");
+			sb.append(partNumber);
+			return sb.toString();
+		} catch (Exception e) {
+			if(project == null) {
+				logger.fatal("A null project was received!", e);
+			} else {
+				logger.fatal("The qr code creation has failed!", e);
+			}
+			return null;
+		}
 	}
 }

@@ -1,38 +1,28 @@
 package com.richard.weger.wqc.service;
 
-import static com.richard.weger.wqc.util.Logger.customLog;
-import static com.richard.weger.wqc.util.Logger.failureLog;
-import static com.richard.weger.wqc.util.Logger.successLog;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.richard.weger.wqc.appconstants.AppConstants;
 import com.richard.weger.wqc.appconstants.FactoryAppConstants;
-import com.richard.weger.wqc.domain.CheckReport;
 import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.FactoryProject;
-import com.richard.weger.wqc.domain.ItemReport;
-import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.Part;
 import com.richard.weger.wqc.domain.Project;
-import com.richard.weger.wqc.domain.Report;
-import com.richard.weger.wqc.helper.CheckReportHelper;
 import com.richard.weger.wqc.helper.ReportHelper;
 import com.richard.weger.wqc.repository.DrawingRefRepository;
-import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
 import com.richard.weger.wqc.repository.ProjectRepository;
+import com.richard.weger.wqc.result.AbstractResult;
+import com.richard.weger.wqc.result.EmptyResult;
+import com.richard.weger.wqc.result.ErrorResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
+import com.richard.weger.wqc.result.SingleObjectResult;
 import com.richard.weger.wqc.util.TimeUtils;
-import com.richard.weger.wqc.util.WorkbookHandler;
 
 @Service
 public class ProjectService {
@@ -41,82 +31,77 @@ public class ProjectService {
 	Map<String, String> mapValues;
 	List<Project> projects;
 	
-	@Autowired private QrTextHandler qrHandler;
+	Logger logger;
+	
+
 	@Autowired private ProjectRepository projectRep;
 	@Autowired private DrawingRefRepository drawingRep;
-	@Autowired private ParamConfigurationsRepository paramConfigsRep;
-	@Autowired private WorkbookHandler wbHandler;
-	
-	@Autowired private CheckReportHelper checkReportHelper;
+	@Autowired private QrTextHandler qrHandler;
 	@Autowired private ReportHelper helper;
+	
+	AppConstants c;
+	
+	public ProjectService() {
+		 c = FactoryAppConstants.getAppConstants();
+	}
 
-	public Project getSingle(String qrCode) {
+	public AbstractResult getSingle(String qrCode){
 		
-		StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-
-		customLog(stackTrace, "Loading project using Qr Code.", getClass());
-
 		Project project = new Project();
-		AppConstants c = FactoryAppConstants.getAppConstants();
 		int drawingNumber, partNumber;
 		String projectReference;
-
-		// Tratamento do código QR
-		mapValues = qrHandler.getParameters(qrCode);
-
-		if (mapValues == null) {
-			return null;
+		
+		if(qrCode == null) {
+			String message = "A null qr code was received at ProjectService.getSingle method";
+			return new ErrorResult(ErrorCode.INVALID_QRCODE, message, ErrorLevel.SEVERE, getClass());
 		}
-
-		// Carregamento do projeto
+		
+		// QrCode Translation - begin
+		mapValues = qrHandler.getParameters(qrCode);
+		if (mapValues == null) {
+			String message = "An error has ocurred while trying to retrieve some parameters of the QR code";
+			return new ErrorResult(ErrorCode.INVALID_QRCODE, message, ErrorLevel.SEVERE, getClass());
+		}
 		drawingNumber = Integer.valueOf(mapValues.get(c.getDRAWING_NUMBER_KEY()));
 		partNumber = Integer.valueOf(mapValues.get(c.getPART_NUMBER_KEY()));
 		projectReference = mapValues.get(c.getPROJECT_NUMBER_KEY());
+		// QrCode Translation - end
+		
+		// Project load - begin
 		project = projectRep.findByReferenceAndDrawingRefsDnumberAndDrawingRefsPartsNumber(projectReference, drawingNumber, partNumber);
-
+		// Project load - end
+		
 		if(project != null) {
-			helper.createReports(project.getDrawingRefs().get(0), mapValues, false);
-			
-			return project;
+			// Reports handling - begin
+			helper.handleReports(project.getDrawingRefs().get(0), mapValues, false);
+			// Reports handling - end
+			return new SingleObjectResult<>(Project.class, project);
 		} else {
-			return null;
+			String message = "No project with qr code '" + qrCode + "' was found!";
+			logger.info(message);
+			return new EmptyResult();
 		}
 
 	}
 
-	public int createSingle(String qrCode) {
-		String restResult = "";
+	public AbstractResult createSingle(String qrCode) {
 		Project project = new Project();
-		AppConstants c = FactoryAppConstants.getAppConstants();
 		DrawingRef drawing;
 		boolean newProject, saveResult;
 		
-		StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+		logger.info("A project creation request was received.");
 
-		// Tratamento do código QR
 		mapValues = qrHandler.getParameters(qrCode);
-		if(mapValues == null ||
-				mapValues.get(c.getPROJECT_NUMBER_KEY()) == null ||
-				mapValues.get(c.getDRAWING_NUMBER_KEY()) == null ||
-				mapValues.get(c.getPART_NUMBER_KEY()) == null
-		) {
-			customLog(stackTrace, "Error while trying to resolve qr code data!", getClass());
-			customLog(stackTrace, 
-					"Project number: "
-					.concat(mapValues.get(c.getPROJECT_NUMBER_KEY()))
-					.concat(", Drawing number: ")
-					.concat(mapValues.get(c.getDRAWING_NUMBER_KEY()))
-					.concat(", Part number: ")
-					.concat(mapValues.get(c.getPART_NUMBER_KEY()))
-					, getClass());
-			return 0;
+		if(mapValues == null) {
+			return new ErrorResult(ErrorCode.INVALID_QRCODE, "Invalid or corrupted qr code!", ErrorLevel.SEVERE, getClass());
 		}
 		
 		String projectRef = mapValues.get(c.getPROJECT_NUMBER_KEY());
+		
 		project = projectRep.findByReference(projectRef);
 		
 		if(project == null) {
-			customLog(stackTrace, "Project ".concat(projectRef).concat(" was not found and will be created!"), getClass());
+			logger.info("The project '" + qrCode + "' does not exist and will be created.");
 			newProject = true;
 			project = FactoryProject.getProject(mapValues);
 			drawing = project.getDrawingRefs().get(0);
@@ -126,7 +111,7 @@ public class ProjectService {
 			p.setParent(drawing);
 			drawing.getParts().add(p);
 		} else {
-			customLog(stackTrace, "Project ".concat(projectRef).concat(" was found and will be updated!"), getClass());
+			logger.info("The project '" + qrCode + "' does exist.");
 			newProject = false;
 			int drawingNumber = Integer.valueOf(mapValues.get(c.getDRAWING_NUMBER_KEY()));
 			int partNumber = Integer.valueOf(mapValues.get(c.getPART_NUMBER_KEY()));
@@ -134,14 +119,14 @@ public class ProjectService {
 					.filter(d -> d.getDnumber() == drawingNumber)
 					.findFirst().orElse(null);
 			if(drawing == null) {
-				customLog(stackTrace, "Drawing ".concat(String.valueOf(drawingNumber)).concat(" was not found and will be created!"), getClass());
+				logger.info("The drawing " + drawingNumber + " does not exist and will be created.");
 				drawing = new DrawingRef();
 				drawing.setDnumber(drawingNumber);
 				drawing.setParent(project);
 			}
 			Part p = drawing.getParts().stream().filter(part -> part.getNumber() == partNumber).findFirst().orElse(null);
 			if(p == null) {
-				customLog(stackTrace, "Part ".concat(String.valueOf(partNumber)).concat(" was not found and will be created!"), getClass());
+				logger.info("The part " + partNumber + " does not exist and will be created.");
 				p = new Part();
 				p.setNumber(partNumber);
 				p.setParent(drawing);
@@ -149,13 +134,7 @@ public class ProjectService {
 			}
 		}
 		
-		customLog(stackTrace, "Starting routine to create drawing's reports", getClass());
-		restResult = helper.createReports(drawing, mapValues, false);
-		if (restResult != null) {
-			customLog(stackTrace, "Reports creation failed! Resulting message is: ".concat(restResult), getClass());
-			customLog(stackTrace, restResult, getClass());
-			customLog(stackTrace, "Execution will continue since this is no longer considered as a severe exception.", getClass());
-		}
+		helper.handleReports(drawing, mapValues, false);
 		
 		if(newProject) {
 			project = projectRep.save(project);
@@ -165,175 +144,11 @@ public class ProjectService {
 			saveResult = drawing != null;
 		}
 
-		if (saveResult) {
-			successLog(stackTrace, getClass());
-			return 1;
+		if(saveResult) {
+			return new SingleObjectResult<>(Project.class, project);
 		} else {
-			failureLog(stackTrace, getClass());
-			return 0; // error
+			return new ErrorResult(ErrorCode.ENTITY_NOT_FOUND, "Project creation failed!", ErrorLevel.SEVERE, getClass());
 		}
-	}
-	
-	@Transactional(readOnly = true)
-	public String export(Report report) {
-		if(report instanceof ItemReport) {
-			ItemReport ir = (ItemReport) report;
-			return export(ir);
-		} else if (report instanceof CheckReport) {
-			CheckReport cr = (CheckReport) report;
-			return export(cr);
-		} else {
-			return "Invalid report type " + report.getClass().getSimpleName();
-		}
-	}
-	
-	public String export(ItemReport report) {
-		String message;
-		message = wbHandler.handleWorkbook(report);
-		return message;
-	}
-	
-	public String export(CheckReport report) {
-		String message;
-		message = checkReportHelper.bitmap2Pdf(report);
-		return message;
-	}
-
-	public String getReportsFolderPath(Project project) {
-		AppConstants consts = FactoryAppConstants.getAppConstants();
-		Map<String, String> mapValues = qrHandler.getParameters(project);
-
-		String path = paramConfigsRep.getDefaultConfig().getServerPath();
-		path = path.concat(paramConfigsRep.getDefaultConfig().getRootPath());
-		path = path.concat(mapValues.get(consts.getCOMMON_PATH_KEY()));
-		path = path.concat("/Technik/Qualitaetskontrolle/");
-		return path;
-	}
-	
-	public List<String> getExistingPictures(String qrCode, int pictureType){
-		ParamConfigurations conf = paramConfigsRep.getDefaultConfig();
-		AppConstants c = FactoryAppConstants.getAppConstants();
-		Map<String, String> mapValues;
-		String folderPath;
-		List<String> existing = new ArrayList<>();
-		File folder;
-		String pictureReference;
-		
-		mapValues = qrHandler.getParameters(qrCode);
-		pictureReference = mapValues.get(c.getPROJECT_NUMBER_KEY())
-				.concat("Z").concat(mapValues.get(c.getDRAWING_NUMBER_KEY()))
-				.concat("T").concat(mapValues.get(c.getPART_NUMBER_KEY()));
-		if(pictureType == 0) {
-			pictureReference = pictureReference.concat("Q");
-		} else if (pictureType == 1) {
-			pictureReference = pictureReference.concat("QP");
-		}
-		folderPath = "//".concat(conf.getServerPath())
-				.concat(conf.getRootPath())
-				.concat(mapValues.get(c.getCOMMON_PATH_KEY())).concat("Fotos/");
-		folder = new File(folderPath);
-		if(folder.exists()) {
-			for(File f : folder.listFiles()) {
-				String fileName = f.getName();
-				if(fileName.startsWith(pictureReference) && fileName.endsWith(".jpg")) {
-					existing.add(fileName);
-				}
-			}
-		} else {
-			System.out.println("The folder" + folder.getPath() + " was not found. This happened during an attempt to check for existing QP pictures.");
-			return new ArrayList<String>();
-		}
-		return existing;
-		
-	}
-	
-	public int generalPictureUpload(String qrCode, String originalFileName, MultipartFile file, HttpHeaders httpHeaders) {
-		Map<String, String> mapValues = qrHandler.getParameters(qrCode);
-		AppConstants c = FactoryAppConstants.getAppConstants();
-		ParamConfigurations conf = paramConfigsRep.getDefaultConfig();
-		
-		httpHeaders.add("originalFileName", originalFileName);
-		String pictureReference = mapValues.get(c.getPROJECT_NUMBER_KEY())
-				.concat("Z").concat(mapValues.get(c.getDRAWING_NUMBER_KEY()))
-				.concat("T").concat(mapValues.get(c.getPART_NUMBER_KEY()))
-				.concat("QP");
-		String targetFilePrefix = "//".concat(conf.getServerPath())
-				.concat(conf.getRootPath())
-				.concat(mapValues.get(c.getCOMMON_PATH_KEY()).concat("Fotos/"));
-		File targetFile = getNonExistingFile(originalFileName, targetFilePrefix, pictureReference, httpHeaders);
-
-		String superFolder;
-		if(targetFile.getPath().contains("\\")) {
-			superFolder = targetFile.getPath().substring(0, targetFile.getPath().lastIndexOf("\\"));
-		} else {
-			superFolder = targetFile.getPath().substring(0, targetFile.getPath().lastIndexOf("/"));
-		}
-		File sFolder = new File(superFolder);
-		if (!sFolder.exists()) {
-			sFolder.mkdirs();
-		}
-		
-		int trials = 0;
-		boolean saved = false;
-		do {
-			try {
-				Files.write(targetFile.toPath(), file.getBytes());
-				saved = true;
-			} catch (Exception e) {
-				if(!targetFile.exists() && trials >= 6) {
-					e.printStackTrace();
-					return 0;
-				} else {
-					trials++;
-				}
-				targetFile = getNonExistingFile(originalFileName, targetFilePrefix, pictureReference, httpHeaders);
-			}
-		} while (!saved);
-		return 1;
-	}
-	
-	private static File getNonExistingFile(String originalFileName, String targetFilePrefix, String pictureReference, HttpHeaders httpHeaders) {
-		File targetFile;
-		if(!originalFileName.endsWith(".jpg")) {
-			originalFileName = originalFileName.concat(".jpg");
-		}
-		String newFileName = originalFileName;
-		do {
-			targetFile = new File(targetFilePrefix.concat(newFileName));
-			if(targetFile.exists()) {
-				String oldPictureNumber = newFileName.substring(pictureReference.length(), newFileName.indexOf(".jpg"));
-				String newPictureNumber = String.valueOf(Integer.valueOf(oldPictureNumber) + 1);
-				newFileName = newFileName.replace(oldPictureNumber, newPictureNumber);
-				httpHeaders.remove("newFileName");
-				httpHeaders.add("newFileName", newFileName);
-			}
-		} while (targetFile.exists());
-		return targetFile;
-	}
-	
-	public boolean removeInvalidReports(Project project) {
-		boolean removed = false;
-		ParamConfigurations conf = paramConfigsRep.getDefaultConfig();
-		do {
-			removed = false;
-			for(Report r : project.getDrawingRefs().get(0).getReports()) {
-				if(r instanceof CheckReport) {
-					CheckReport cr = (CheckReport) r;
-					mapValues = qrHandler.getParameters(qrHandler.createQrText(project));
-					String fileName = cr.getFileName();
-					String filePath = "//".concat(conf.getServerPath())
-							.concat(conf.getRootPath())
-							.concat(mapValues.get(FactoryAppConstants.getAppConstants().getTECHNICAL_PATH_KEY())).concat(fileName);
-					File reportFile = new File(filePath);
-					if(!reportFile.exists()) {
-						project.getDrawingRefs().get(0).getReports().remove(r);
-						removed = true;
-						break;
-					}
-				}
-			}
-		} while (removed);
-		return false;
 	}
 	
 }

@@ -3,6 +3,7 @@ package com.richard.weger.wqc.domain;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
+@SuppressWarnings("serial")
 @Entity
 //@EntityListeners(ReportListener.class)
 @Table(name = "reports")
@@ -26,7 +27,7 @@ public abstract class Report extends ParentAwareEntity {
 	}
 
 	public DrawingRef getParent() {
-		return super.getParent();
+		return super.getParent(DrawingRef.class);
 	}
 
 //	public String getType() {

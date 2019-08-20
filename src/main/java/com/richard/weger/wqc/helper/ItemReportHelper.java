@@ -3,6 +3,7 @@ package com.richard.weger.wqc.helper;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,11 @@ import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.Report;
 import com.richard.weger.wqc.repository.DrawingRefRepository;
 import com.richard.weger.wqc.repository.ProjectRepository;
+import com.richard.weger.wqc.result.AbstractResult;
+import com.richard.weger.wqc.result.ErrorResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
+import com.richard.weger.wqc.result.SingleObjectResult;
 
 @Service
 public class ItemReportHelper {
@@ -20,6 +26,12 @@ public class ItemReportHelper {
 	@Autowired private DrawingRefRepository drawingRefRepository;
 	@Autowired private ProjectRepository projectRepository;
 	
+	Logger logger;
+	
+	public ItemReportHelper() {
+		logger = Logger.getLogger(ItemReportHelper.class);
+	}
+		
 	@SuppressWarnings("serial")
 	public List<Item> getDefaultItems(ItemReport itemReport) {
 		List<Item> itemList = new ArrayList<Item>() {
@@ -90,10 +102,20 @@ public class ItemReportHelper {
 		return false;
 	}
 
-	public String getXlsFileName(ItemReport report) {
-		DrawingRef dRef = drawingRefRepository.getById(report.getParent().getId());
-		Project project = projectRepository.getById(dRef.getParent().getId());
-		return "Z".concat(String.valueOf(dRef.getDnumber())).concat("-")
-				.concat(project.getReference()).concat("Q").concat(".xls");
+	public AbstractResult getXlsFileName(ItemReport report) {
+		String filename;
+		DrawingRef dRef;
+		Project project;
+		try {
+			dRef = drawingRefRepository.getById(report.getParent().getId());
+			project = projectRepository.getById(dRef.getParent().getId());
+			filename = "Z".concat(String.valueOf(dRef.getDnumber())).concat("-")
+					.concat(project.getReference()).concat("Q").concat(".xls");
+			return new SingleObjectResult<>(String.class, filename);
+		} catch (Exception ex) {
+			String message = "Error while trying to retrieve a report filename!";
+			logger.warn(message, ex);
+			return new ErrorResult(ErrorCode.FILENAME_RETRIEVAL_FAILED, message, ErrorLevel.WARNING, getClass());
+		}
 	}
 }

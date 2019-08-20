@@ -21,10 +21,18 @@ import com.richard.weger.wqc.domain.DomainEntity;
 import com.richard.weger.wqc.domain.ParentAwareEntity;
 import com.richard.weger.wqc.repository.IRepository;
 
+import jxl.common.Logger;
+
 @Service
 public class BeanUtil implements ApplicationContextAware {
 		
 	private static ApplicationContext context;
+	
+	Logger logger;
+	
+	public BeanUtil() {
+		logger = Logger.getLogger(getClass());
+	}
 	
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -35,6 +43,7 @@ public class BeanUtil implements ApplicationContextAware {
 		return context.getBean(beanClass);
 	}
 	
+	@SuppressWarnings("unchecked")
 	public static <T extends DomainEntity> IRepository<T> getRepository(String entityName){
 		Class<IRepository<T>> clz = null;
 		try {
@@ -82,7 +91,7 @@ public class BeanUtil implements ApplicationContextAware {
 		return r;
 	}
 	
-	public static <T extends AuditableEntity> void backupCreationInfo(T source, T target) {
+	public <T extends AuditableEntity> void backupCreationInfo(T source, T target) {
 		try {
 			List<Field> fields = new LinkedList<>();
 			BeanUtil.getAllFields(fields, source.getClass());
@@ -96,7 +105,7 @@ public class BeanUtil implements ApplicationContextAware {
 				}
 			}
 		} catch (Exception ex) {
-			System.out.println("Falha ao manter informações de criação da entidade " + target.getClass().getSimpleName() + ", id " + target.getId());
+			logger.warn("Falha ao manter informações de criação da entidade " + target.getClass().getSimpleName() + ", id " + target.getId());
 		}
 	}
 	

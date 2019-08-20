@@ -1,11 +1,5 @@
 package com.richard.weger.wqc.faccade;
 
-import static com.richard.weger.wqc.util.Logger.customLog;
-import static com.richard.weger.wqc.util.Logger.writeData;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,64 +7,68 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.richard.weger.wqc.ReportExportDTO;
 import com.richard.weger.wqc.domain.Device;
-import com.richard.weger.wqc.domain.DomainEntity;
 import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.Report;
 import com.richard.weger.wqc.domain.Role;
+import com.richard.weger.wqc.exception.WebException;
 import com.richard.weger.wqc.repository.DeviceRepository;
 import com.richard.weger.wqc.repository.DrawingRefRepository;
 import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
 import com.richard.weger.wqc.repository.ProjectRepository;
-import com.richard.weger.wqc.repository.ReportRepository;
 import com.richard.weger.wqc.repository.RoleRepository;
+import com.richard.weger.wqc.result.AbstractResult;
+import com.richard.weger.wqc.result.ErrorResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
+import com.richard.weger.wqc.result.ResultService;
+import com.richard.weger.wqc.result.SuccessResult;
 import com.richard.weger.wqc.service.EntityService;
-import com.richard.weger.wqc.service.EntityServiceResult;
-import com.richard.weger.wqc.service.ReportService;
+import com.richard.weger.wqc.service.ExportService;
 import com.richard.weger.wqc.util.TimeUtils;
 
 @Controller
 @RequestMapping(value = "/web" )
 public class WebFaccade {
-	
-	@Autowired private HttpServletRequest request;
 
-	@Autowired private ReportService reportService;
+	@Autowired private ExportService exportService;
 	
 	@Autowired private ProjectRepository projectRep;
 	@Autowired private DrawingRefRepository drawingRep;
-	@Autowired private ReportRepository reportRep;
 	@Autowired private ParamConfigurationsRepository configRep;
 	@Autowired private DeviceRepository deviceRep;
 	@Autowired private RoleRepository roleRep;
 	@Autowired private EntityService entityService;
 	
 	HttpHeaders headers;
+	
+	Logger logger;
 
 	public WebFaccade() {
-		writeData("System started... Version 2.0.6.1");
+		logger = Logger.getLogger(getClass());
+		logger.info("System started... Version 2.0.6.1");
 	}
 
 	public String getCurrentTime() {
@@ -130,10 +128,39 @@ public class WebFaccade {
 	}
 
 	@GetMapping(value = { "/reports/{rid}" })
-	public String reportView(@PathVariable(value = "rid") Long reportid, HttpServletResponse response) {
-
-		reportService.getPreviewFileResponse(response, reportid);
-		return null;
+	public ResponseEntity<?> reportView(@PathVariable(value = "rid") Long reportid, HttpServletResponse response) throws WebException {
+		AbstractResult res = exportService.getExportedReport(reportid);
+		if(res instanceof SuccessResult) {
+			ReportExportDTO dto;
+			HttpHeaders headers;
+			
+			dto = ResultService.getSingleResult(res, ReportExportDTO.class);
+			
+			headers = new HttpHeaders();
+			headers.setExpires(-1);
+			headers.setContentType(MediaType.valueOf(dto.getContentType()));
+			headers.setContentLength(dto.getContent().length);
+			headers.setContentDispositionFormData("inline", dto.getFileName());
+			
+			return new ResponseEntity<byte[]>(dto.getContent(), headers, HttpStatus.OK);
+		} else {
+			ErrorResult err = new ErrorResult(ErrorCode.FILE_PREVIEW_FAILED, "Unable to show this document at this moment. Please try again later.", ErrorLevel.WARNING, getClass());
+			throw new WebException(err, "/reports");
+		}
+	}
+	
+	@ExceptionHandler(WebException.class)
+	public ModelAndView handleWebError(final WebException e) {
+		ErrorResult err;
+		ModelAndView errMv;
+		
+		err = e.getErr();
+		errMv = new ModelAndView("errorPage");
+		errMv.addObject("code", err.getCode());
+		errMv.addObject("message", err.getDescription());
+		errMv.addObject("redirectPath", e.getPathToRedirect());
+		
+		return errMv;
 	}
 
 	@GetMapping(value = "/settings/")
@@ -151,16 +178,16 @@ public class WebFaccade {
 	public ModelAndView settings(@RequestParam(value = "operation") String operation,
 			@Validated @ModelAttribute("ParamConfigurations") ParamConfigurations paramConfigurations, RedirectAttributes attr) {
 
-		String result = null;
 		ModelAndView mv = new ModelAndView("setting");
 		
 		mv.addObject("ParamConfigurations", paramConfigurations);
 
 		if (operation.toLowerCase().equals("save")) {
-			EntityServiceResult<ParamConfigurations> res = entityService.postEntity(paramConfigurations, null, paramConfigurations.getClass().getSimpleName());
-			result = res.getMessage();
-			if (result != null) {
-				attr.addFlashAttribute("message", result);
+			AbstractResult res = entityService.postEntity(paramConfigurations, null, paramConfigurations.getClass().getSimpleName(), null);
+			if (res instanceof ErrorResult) {
+				ErrorResult err = ResultService.getErrorResult(res);
+				String message = err.getCode().concat(" - ").concat(err.getDescription());
+				attr.addFlashAttribute("message", message);
 			} else {
 				attr.addFlashAttribute("message", "Changes saved!");
 			}
@@ -239,8 +266,11 @@ public class WebFaccade {
 			} else if (devices.size() > 0 && devices.stream().filter(d -> d.getName() != null).anyMatch(d -> d.getName().equals(device.getName()) && d.getId() != device.getId())) {
 				message = "Device name should be unique!";
 			} else {
-				EntityServiceResult<Device> res = entityService.postEntity(device, null, device.getClass().getSimpleName());
-				message = res.getMessage();
+				AbstractResult res = entityService.postEntity(device, null, device.getClass().getSimpleName(), null);
+				if(res instanceof ErrorResult) {
+					ErrorResult err = ResultService.getErrorResult(res);
+					message = err.getCode().concat(" - ").concat(err.getDescription());
+				}
 			}
 			if (message != null) {
 				attr.addFlashAttribute("message", message);
@@ -257,108 +287,5 @@ public class WebFaccade {
 
 	// JSP METHODS - END
 	// -----------------------------------------------------------------------------------------------
-	
-	
-	private <T extends DomainEntity> List<T> getEntities(String resource, Class<T> clazz){
-		List<T> entities = new ArrayList<>();
-		RestTemplate template;
-		URI uri;
-		template = new RestTemplate();
-		
-		try {
-			String url = resource;
-			String query = null;
-			if(resource.contains("?")) {
-				url = resource.substring(0, resource.indexOf("?"));
-				query = resource.substring(resource.indexOf("?") + 1);
-			}
-			String context = request.getContextPath();
-			uri = new URI(request.getScheme(), null, request.getServerName(), request.getServerPort(), context.concat("/rest").concat(url), query, null);
-			System.out.println(uri.toString());
-			ResponseEntity<List<T>> response;
-			response = template.exchange(
-				uri, 
-				HttpMethod.GET,
-				null,
-				new ParameterizedTypeReference<List<T>>() {}
-			);
-			if(response != null && response.getBody() != null) {
-				entities = response.getBody();
-				return entities;
-			} else {
-				return null;
-			}
-		} catch (Exception e) {
-			customLog(new Throwable().getStackTrace(), e.getMessage(), getClass());
-			return null;
-		}
-	}
-	
-	private <T extends DomainEntity> T getEntity(String resource, Class<T> clazz) {
-		T entity = null;
-		RestTemplate template;
-		URI uri;
-		template = new RestTemplate();
-		try {
-			String context = request.getContextPath();
-			uri = new URI(request.getScheme(), null, request.getServerName(), request.getServerPort(), context.concat("/rest").concat(resource), null, null);
-			System.out.println(uri.toString());
-			ResponseEntity<T> response;
-			response = template.exchange(
-				uri, 
-				HttpMethod.GET,
-				null,
-				clazz
-			);
-			if(response != null && response.getBody() != null) {
-				entity = response.getBody();
-			}
-			return entity;
-		} catch (Exception e) {
-			customLog(new Throwable().getStackTrace(), e.getMessage(), getClass());
-			return null;
-		}
-	}
-	
-	private <T extends DomainEntity> String postEntity(String resource, T e, Class<T> clazz){
-		RestTemplate template;
-		URI uri;
-		template = new RestTemplate();
-		
-		HttpEntity<T> entity = new HttpEntity<T>(e);
-		
-		try {
-			String context = request.getContextPath();
-			uri = new URI(request.getScheme(), null, request.getServerName(), request.getServerPort(), context.concat("/rest").concat(resource), null, null);
-			System.out.println(uri.toString());
-			ResponseEntity<T> response = null;
-			try {
-				response = template.exchange(
-					uri, 
-					HttpMethod.POST,
-					entity,
-					clazz
-				);
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
-			if(response != null && (response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.CREATED)) {
-				if(response.getHeaders().get("message") != null) {
-					String message = response.getHeaders().get("message").get(0);
-					if(response.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-						if(message != null) {
-							return message;
-						}
-					}
-				}
-			} else {
-				return "Internal server error! Please try again later or contact your system admin!";
-			}
-			return null;
-		} catch (URISyntaxException ex) {
-			customLog(new Throwable().getStackTrace(), ex.getMessage(), getClass());
-			return "An error has ocurred while trying to process your request";
-		}
-	}
 
 }

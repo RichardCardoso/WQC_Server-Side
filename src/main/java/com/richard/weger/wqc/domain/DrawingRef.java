@@ -31,7 +31,7 @@ public class DrawingRef extends ParentAwareEntity {
 	private List<Part> parts;
 
 	public Project getParent() {
-		return (Project) super.getParent();
+		return super.getParent(Project.class);
 	}
 
 	public int getDnumber() {

@@ -5,7 +5,7 @@ import javax.persistence.PostUpdate;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.richard.weger.wqc.domain.Report;
-import com.richard.weger.wqc.service.ProjectService;
+import com.richard.weger.wqc.service.ExportService;
 import com.richard.weger.wqc.util.BeanUtil;
 
 public class ReportListener extends AbstractEntityListener {
@@ -13,7 +13,7 @@ public class ReportListener extends AbstractEntityListener {
 	@PostUpdate @Transactional(readOnly = true)
 	public void preUpdate(Report report) {
 //		String event = "Report changed by " + report.getLastModifiedBy();
-		ProjectService service = BeanUtil.getBean(ProjectService.class);
+		ExportService service = BeanUtil.getBean(ExportService.class);
 		if(report.isFinished()) {
 			service.export((Report) report.getSavedState());
 		}

@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +16,11 @@ import com.richard.weger.wqc.appconstants.FactoryAppConstants;
 import com.richard.weger.wqc.domain.Item;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
+import com.richard.weger.wqc.result.AbstractResult;
+import com.richard.weger.wqc.result.EmptyResult;
+import com.richard.weger.wqc.result.ErrorResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
 
 @Service
 public class ItemService {
@@ -52,13 +56,17 @@ public class ItemService {
 		return existing;
 	}
 	
-	public int pictureUpload(String qrCode, String fileName, MultipartFile file, HttpHeaders httpHeaders) {
+	public AbstractResult itemPictureUpload(String qrCode, String fileName, MultipartFile file) {
 		AppConstants appConst = FactoryAppConstants.getAppConstants();
 		
 		ParamConfigurations conf;
-		conf = paramConfigsRep.getDefaultConfig();
-
-		Map<String, String> mapValues = handler.getParameters(qrCode);
+		Map<String, String> mapValues;
+		
+		if(qrCode == null) {
+			return new ErrorResult(ErrorCode.INVALID_QRCODE, "Invalid qr code was received in a 'general picture upload' request!", ErrorLevel.SEVERE, getClass());
+		}
+		conf = paramConfigsRep.getDefaultConfig();	
+		mapValues = handler.getParameters(qrCode);
 		
 		if(!fileName.endsWith(".jpg")) {
 			fileName = fileName.concat(".jpg");
@@ -83,9 +91,9 @@ public class ItemService {
 			Files.write(targetFile.toPath(), file.getBytes());
 		} catch (IOException e) {
 			e.printStackTrace();
-			return 0;
+			return new ErrorResult(ErrorCode.FILE_UPLOAD_FAILED, "Failed to save a general pic's content into the disk!", ErrorLevel.SEVERE, getClass());
 		}
 		
-		return 1;
+		return new EmptyResult();
 	}
 }

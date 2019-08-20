@@ -1,10 +1,9 @@
 package com.richard.weger.wqc.helper;
 
-import static com.richard.weger.wqc.util.Logger.customLog;
-
 import java.io.File;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,26 +22,42 @@ import com.richard.weger.wqc.util.PdfHandler;
 public class ReportHelper {
 	
 	@Autowired ParamConfigurationsRepository rep;
+	Logger logger;
+	
+	public ReportHelper() {
+		logger = Logger.getLogger(ParamConfigurationsRepository.class);
+	}
 
-	public String createReports(DrawingRef drawing, Map<String, String> mapValues, boolean forceCreation) {
-		String errorMessage = null;
+	public void handleReports(DrawingRef drawing, Map<String, String> mapValues, boolean forceCreation) {
 		
-		long zeroPagesReportsCount = drawing.getReports().stream()
-				.filter(r -> r instanceof CheckReport && r != null)
-				.map(r -> (CheckReport) r)
-				.filter(r -> r.getPagesCount() == 0)
-				.count();
+		long zeroPagesReportsCount;
+		zeroPagesReportsCount = getZeroPagesReportsCount(drawing);
 		if (forceCreation || getReportsCount(drawing) == 0 || zeroPagesReportsCount > 0)
 		{
-			errorMessage = createReportsList(drawing, mapValues);
+			createReportsList(drawing, mapValues);
 		}
 		drawing.getReports().stream().filter(r -> r instanceof CheckReport).map(r -> (CheckReport) r).forEach(r -> {
 			r.getPages().forEach(p -> p.getMarks().stream().count());
 		});
-		return errorMessage;
+	}
+	
+	private long getZeroPagesReportsCount(DrawingRef drawing) {
+		long count = 0;
+		
+		try {
+			count = drawing.getReports().stream()
+				.filter(r -> r instanceof CheckReport && r != null)
+				.map(r -> (CheckReport) r)
+				.filter(r -> r.getPagesCount() == 0)
+				.count();
+		} catch (Exception ex) {
+			logger.warn("Error while trying to get zero pages reports count!", ex);
+		}
+		
+		return count;
 	}
 
-	private String createReportsList(DrawingRef drawing, Map<String, String> mapValues) {
+	private void createReportsList(DrawingRef drawing, Map<String, String> mapValues) {
 		ParamConfigurations conf;
 		File projectFolder;
 		File[] fList;
@@ -82,12 +97,12 @@ public class ReportHelper {
 				for (File f : fList) {
 					String sWork = fileHandled(drawing, strCode, codeLen, extLen, strExtension, f);
 					if(sWork != null)
-						customLog(new Throwable().getStackTrace(), sWork, getClass());
+						logger.warn(sWork);
 				}
 			}
-			return null;
+		} else {
+			logger.warn("This project's folder (" + projectFolder + ") wasn't found at the server!");
 		}
-		return "This project's folder (" + projectFolder + ") wasn't found at the server!";
 	}
 
 	private String fileHandled(DrawingRef drawing, String strCode, int codeLen, int extLen, String strExtension, File f) {
@@ -126,8 +141,7 @@ public class ReportHelper {
 			}
 			int pagesCount = (new PdfHandler()).getPagesCount(f.getPath());
 			if (pagesCount == 0) {
-				System.out.println("A report pdf file is invalid or corrupted (" + f.getName() + ")");
-				System.err.println("A report pdf file is invalid or corrupted (" + f.getName() + ")");
+				logger.warn("A report pdf file is invalid or corrupted (" + f.getName() + ")");
 			} else {
 				for (int j = 0; j < pagesCount; j++) {
 					report.addBlankPage();
@@ -159,9 +173,11 @@ public class ReportHelper {
 		return cnt;
 	}
 
-	public int getReportsCount(DrawingRef d) {
-		int cnt = 0;
-		cnt = (int) d.getReports().stream().count();
+	public long getReportsCount(DrawingRef d) {
+		long cnt = 0;
+		if(d.getReports() != null) {
+			cnt = d.getReports().size();
+		}
 		return cnt;
 	}
 

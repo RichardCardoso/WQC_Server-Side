@@ -20,7 +20,7 @@ public class DomainEntityListener {
 			DomainEntity savedEntity = mapper.readValue(sEntity, entity.getClass());
 			if(savedEntity instanceof ParentAwareEntity) {
 				ParentAwareEntity e = (ParentAwareEntity) savedEntity;
-				DomainEntity parent = ((ParentAwareEntity) savedEntity).getParent();
+				DomainEntity parent = ((ParentAwareEntity) savedEntity).getParent(DomainEntity.class);
 				ProjectHelper.linkReferences(parent, e);
 			}
 			entity.setSavedState(savedEntity);

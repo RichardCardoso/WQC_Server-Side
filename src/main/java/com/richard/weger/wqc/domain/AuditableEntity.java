@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.richard.weger.wqc.spring.jackson.CustomDateDeserializer;
 
 
+@SuppressWarnings("serial")
 @Entity
 public abstract class AuditableEntity extends DomainEntity {
 	

@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,13 @@ import com.richard.weger.wqc.domain.Item;
 import com.richard.weger.wqc.domain.ItemReport;
 import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.helper.ItemReportHelper;
+import com.richard.weger.wqc.result.AbstractResult;
+import com.richard.weger.wqc.result.ErrorResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
+import com.richard.weger.wqc.result.ResultService;
+import com.richard.weger.wqc.result.SuccessResult;
+import com.richard.weger.wqc.service.ExportService;
 import com.richard.weger.wqc.service.ProjectService;
 
 import jxl.Workbook;
@@ -39,10 +47,17 @@ public class WorkbookHandler {
 	
 	@Autowired ItemReportHelper helper;
 	@Autowired ProjectService projectService;
+	@Autowired ExportService exportService;
+	
+	Logger logger;
+	
+	public WorkbookHandler() {
+		logger = Logger.getLogger(getClass());
+	}
 
 	static AppConstants consts = FactoryAppConstants.getAppConstants();
 
-	public String handleWorkbook(ItemReport report) {
+	public AbstractResult handleWorkbook(ItemReport report) {
 		FileHandler fileHandler = new FileHandler();
 		Workbook workbook;
 		WritableWorkbook finalWorkbook;
@@ -52,6 +67,7 @@ public class WorkbookHandler {
 		OutputStream outputStream;
 		String outputFileName;
 		File outputFile;
+		AbstractResult res;
 		
 		Project project = report.getParent().getParent();
 		String username = report.getLastModifiedBy();
@@ -67,12 +83,24 @@ public class WorkbookHandler {
 		try {
 			inputStream = new FileInputStream(fileHandler.getResourcesFile(consts.getCONTROLCARDREPORT_FILENAME()));
 		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-			return e1.getMessage();
+			String message = "The base xls file for 'Kontrollkarte' was not found!";
+			logger.fatal(message, e1);
+			return new ErrorResult(ErrorCode.BASE_FILE_RETRIEVAL_FAILED, message, ErrorLevel.SEVERE, getClass());
 		}
 
-		outputFileName = projectService.getReportsFolderPath(project);
-		outputFileName = outputFileName.concat(helper.getXlsFileName(report).replaceAll(".xls", "_tmp.xls"));
+		outputFileName = exportService.getReportsFolderPath(project);
+		res = helper.getXlsFileName(report);
+		if(res instanceof SuccessResult) {
+			String sRes = ResultService.getSingleResult(res, String.class);
+			outputFileName = outputFileName.concat(sRes.replaceAll(".xls", "_tmp.xls"));
+		} else {
+			try {
+				inputStream.close();
+			} catch (Exception ex) {
+				logger.warn("Failed to close the input stream of the 'Kontrollkarte' base file!", ex);
+			}
+			return res;
+		}
 
 		outputFile = new File(outputFileName);
 		outputFile.getParentFile().mkdirs();
@@ -85,23 +113,22 @@ public class WorkbookHandler {
 				outputStream.write(buffer, 0, read);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
-			return e.getMessage();
+			String message = "Failed to read from the 'Kontrollkarte' base file!";
+			logger.fatal(message, e);
+			return new ErrorResult(ErrorCode.BASE_FILE_IO_FAILED, message, ErrorLevel.SEVERE, getClass());
 		} finally {
 			if (inputStream != null) {
 				try {
 					inputStream.close();
 				} catch (IOException e) {
-					e.printStackTrace();
-					return e.getMessage();
+					logger.warn("Failed to close the input stream of the 'Kontrollkarte' base file!", e);
 				}
 			}
 			if (outputStream != null) {
 				try {
 					outputStream.close();
 				} catch (IOException e) {
-					e.printStackTrace();
-					return e.getMessage();
+					logger.warn("Failed to close the output stream of the 'Kontrollkarte' base file!", e);
 				}
 			}
 		}
@@ -117,20 +144,22 @@ public class WorkbookHandler {
 				try {
 					finalWorkbook.write();
 				} catch (Exception e) {
-					e.printStackTrace();
-					return e.getMessage();
+					String message = "Failed to write to the 'Kontrollkarte' output file!";
+					logger.fatal(message, e);
+					return new ErrorResult(ErrorCode.WRITE_OPERATION_FAILED, message, ErrorLevel.SEVERE, getClass());
 				}
 				finalWorkbook.close();
 				workbook.close();
 			} catch (FileNotFoundException ex) {
-				String error = "Unable to proccess file ".concat(outputFileName)
-						.concat(" because its beign used by another proccess");
-				System.out.println(error);
-				return error;
+				String message = "Unable to proccess file ".concat(outputFileName)
+						.concat(" because it is beign used by another proccess");
+				logger.fatal(message, ex);
+				return new ErrorResult(ErrorCode.WRITE_OPERATION_FAILED, message, ErrorLevel.SEVERE, getClass());
 			}
 		} catch (IOException | BiffException | WriteException e) {
-			e.printStackTrace();
-			return e.getMessage();
+			String message = "General failure when trying to write to the 'Kontrollkarte' output file!";
+			logger.fatal(message, e);
+			return new ErrorResult(ErrorCode.WRITE_OPERATION_FAILED, message, ErrorLevel.SEVERE, getClass());
 		}
 		outputFile.delete();
 		return null;

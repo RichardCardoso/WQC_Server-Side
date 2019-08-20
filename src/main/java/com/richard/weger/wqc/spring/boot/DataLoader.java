@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -22,18 +23,23 @@ public class DataLoader implements CommandLineRunner {
 	@Autowired private ParamConfigurationsRepository rep;
 	@Autowired private DomainEntityRepository domainRep;
 	
+	Logger logger;
+	
+	public DataLoader() {
+		logger = Logger.getLogger(getClass());
+	}
+	
 	@Override
 	public void run(String... args) throws Exception {
-		System.out.println("Started default data loader");
+		logger.info("Started default data loader");
 		ParamConfigurations conf = rep.getDefaultConfig();
 		if(conf == null) {
 			conf = new ParamConfigurations();
 			conf = rep.save(conf);
 			if(conf == null) {
-				System.out.println("Error while trying to save default paramconfigs!");
-				System.err.println("Error while trying to save default paramconfigs!");
+				logger.warn("Error while trying to save default paramconfigs!");
 			} else {
-				System.out.println("Param configs saved with id=" + conf.getId());
+				logger.info("Param configs saved with id=" + conf.getId());
 			}
 		}
 		
@@ -54,10 +60,9 @@ public class DataLoader implements CommandLineRunner {
 				r.setComments(rolesComments.get(role));
 				r = domainRep.save(r);
 				if(r == null) {
-					System.err.println("Error while trying to save default role " + role);
-					System.out.println("Error while trying to save default role " + role);
+					logger.warn("Error while trying to save default role " + role);
 				} else {
-					System.out.println("Role " + r.getDescription() + " saved with id=" + r.getId());
+					logger.info("Role " + r.getDescription() + " saved with id=" + r.getId());
 				}
 			}
 		}

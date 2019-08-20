@@ -47,8 +47,5 @@ public class FirebaseMessagingHelper {
 			e.printStackTrace();
 		}
 		
-//		System.out.println(response);
-//		System.out.println(message);
-		
 	}
 }
