@@ -79,7 +79,7 @@ public class EntityService {
 			rep.deleteById(id);
 			e = rep.getById(id);
 			if(e == null) {
-				if(Strings.isEmpty(qrcode)) {
+				if(!Strings.isEmpty(qrcode)) {
 					firebase.sendUpdateNotice(qrcode);
 				} else {
 					logger.warn("Invalid qr code received at a DELETE procedure. Unable to send firebase push message!");
@@ -128,15 +128,16 @@ public class EntityService {
 		}
 		
 		if(entity != null) {
+			boolean shouldSendUpdateNotice;
+			shouldSendUpdateNotice = !(entity instanceof ParamConfigurations || entity instanceof Device);
 			if(entity instanceof Report) {
 				Report r = (Report) entity;
 				exportService.export(r);
-			} else if (!(entity instanceof ParamConfigurations) && !(entity instanceof Device)) {
-				if(Strings.isEmpty(qrcode)) {
-					firebase.sendUpdateNotice(qrcode);
-				} else {
-					logger.warn("Invalid qr code received at a POST procedure. Unable to send firebase push message!");
-				}
+			} 
+			if (shouldSendUpdateNotice && !Strings.isEmpty(qrcode)) {
+				firebase.sendUpdateNotice(qrcode);
+			} else if (shouldSendUpdateNotice && Strings.isEmpty(qrcode)) {
+				logger.warn("Invalid qr code received at a POST procedure. Unable to send firebase push message!");
 			}
 			SingleObjectResult<DomainEntity> oRes = new SingleObjectResult<>(DomainEntity.class, entity);
 			if(eId > 0) {

@@ -43,6 +43,7 @@ public class ProjectService {
 	
 	public ProjectService() {
 		 c = FactoryAppConstants.getAppConstants();
+		 logger = Logger.getLogger(getClass());
 	}
 
 	public AbstractResult getSingle(String qrCode){

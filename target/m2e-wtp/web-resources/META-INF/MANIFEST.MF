@@ -1,10 +1,10 @@
 Manifest-Version: 1.0
-Implementation-Title: WQC-2.0
+Implementation-Title: WQC-Server
 Implementation-Version: 0.0.1-SNAPSHOT
 Built-By: vendas1
-Implementation-Vendor-Id: WQC-2.0
+Implementation-Vendor-Id: WQC-Server
 Build-Jdk: 1.8.0_201
 Implementation-URL: https://projects.spring.io/spring-boot/#/spring-bo
- ot-starter-parent/WQC-2.0
+ ot-starter-parent/WQC-Server
 Created-By: Maven Integration for Eclipse
 

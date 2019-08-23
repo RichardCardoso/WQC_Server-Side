@@ -27,7 +27,7 @@ public class FirebaseMessagingHelper {
 		post.setHeader("Authorization", "key=AAAAt_sER9w:APA91bGP20YfUE9oy-zoDZb9WQkTZFhHB_TstnBJrZ0F7LKN3my8xZ8MgTYlBB6NqPALAuE-Q_xcfuPe3MyS7rVtF7nlzePMZURZANEE4u9xYwJC0AtiHJaH8uxMnLjYwus4F59hmSaP");
 		
 		JSONObject message = new JSONObject();
-		message.put("to", "/topics/wqc-2.0");
+		message.put("to", "/topics/WQC2-0");
 		message.put("priority", "high");
 		
 		JSONObject data = new JSONObject();

@@ -6,12 +6,13 @@ import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -28,17 +30,23 @@ import com.richard.weger.wqc.domain.Device;
 import com.richard.weger.wqc.domain.DomainEntity;
 import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.Role;
+import com.richard.weger.wqc.domain.dto.FileDTO;
 import com.richard.weger.wqc.result.AbstractResult;
 import com.richard.weger.wqc.result.EmptyResult;
+import com.richard.weger.wqc.result.ErrorResult;
 import com.richard.weger.wqc.result.ResultService;
 import com.richard.weger.wqc.result.ResultWithContent;
 import com.richard.weger.wqc.result.SingleObjectResult;
 import com.richard.weger.wqc.result.SuccessResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
 import com.richard.weger.wqc.service.DeviceService;
 import com.richard.weger.wqc.service.EntityService;
 import com.richard.weger.wqc.service.FileService;
 import com.richard.weger.wqc.service.ProjectService;
 import com.richard.weger.wqc.service.RoleService;
+
+import jxl.common.Logger;
 
 @RestController
 @RequestMapping("/rest")
@@ -49,6 +57,12 @@ public class RestFaccade {
 	@Autowired private RoleService roleService;
 	@Autowired private FileService fileService;
 	@Autowired private EntityService entityService;
+	
+	Logger logger;
+	
+	public RestFaccade() {
+		logger = Logger.getLogger(getClass());
+	}
 	
 	// REST METHODS - BEGIN
 	// -----------------------------------------------------------------------------------------------
@@ -191,7 +205,7 @@ public class RestFaccade {
 		res = fileService.pictureUpload(qrCode, fileName, file, pictureType, itemId);
 
 		if (res instanceof SuccessResult) {
-			String newName = FilenameUtils.removeExtension(ResultService.getSingleResult(res, File.class).getName());
+			String newName = ResultService.getSingleResult(res, File.class).getName();
 			return ResponseEntity.ok().headers(fileService.getHeadersWithFilenames(fileName, newName)).body(null);
 		}
 		
@@ -199,7 +213,7 @@ public class RestFaccade {
 	}
 
 	@GetMapping(value = "/pdfdocument")
-	public ResponseEntity<InputStreamResource> getPdf(
+	public ResponseEntity<ByteArrayResource> getPdf(
 			@RequestParam(value = "filename") String filename,
 			@RequestParam(value = "qrcode") String qrcode) {
 		
@@ -207,7 +221,7 @@ public class RestFaccade {
 		AbstractResult res;
 		
 		headers = new HttpHeaders();
-		headers.add("Content-Disposition", "inline; filename=" + filename);
+//		headers.add("Content-Disposition", "inline; filename=" + filename);
 		
 		res = fileService.getOriginalPdf(filename, qrcode);
 		
@@ -217,8 +231,8 @@ public class RestFaccade {
 		} else if(res instanceof SingleObjectResult) {
 			return ResponseEntity.ok()
 					.headers(headers)
-					.contentType(MediaType.APPLICATION_PDF)
-					.body(ResultService.getSingleResult(res, InputStreamResource.class));
+					.contentType(MediaType.APPLICATION_OCTET_STREAM)
+					.body(ResultService.getSingleResult(res, ByteArrayResource.class));
 		} else {
 			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -229,13 +243,13 @@ public class RestFaccade {
 	}
 	
 	@GetMapping(value = "/picture")
-	public ResponseEntity<InputStreamResource> getPicture(
+	public ResponseEntity<ByteArrayResource> getPicture(
 			@RequestParam(value = "filename") String filename,
 			@RequestParam(value = "qrcode") String qrcode) {
 		HttpHeaders headers;
 		
 		headers = new HttpHeaders();
-		headers.add("Content-Disposition", "inline; filename=" + filename);
+//		headers.add("Content-Disposition", "inline; filename=" + filename);
 		
 		AbstractResult res = fileService.getPicture(filename, qrcode);
 
@@ -243,9 +257,11 @@ public class RestFaccade {
 			headers.add("fileName", filename);
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(null);
 		} else if (res instanceof SingleObjectResult) {
-			InputStreamResource iRes = ResultService.getSingleResult(res, InputStreamResource.class);
-			headers.add("LastModified", fileService.getLastModifiedDate(iRes).toString());
-			return ResponseEntity.ok().headers(headers).contentType(MediaType.IMAGE_JPEG)
+			ByteArrayResource iRes = ResultService.getSingleResult(res, ByteArrayResource.class);
+			headers.add("LastModified", fileService.getPictureLastModifiedDate(filename, qrcode).toString());
+			return ResponseEntity.ok()
+					.headers(headers)
+					.contentType(MediaType.APPLICATION_OCTET_STREAM)
 					.body(iRes);
 		} else {
 			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
@@ -256,16 +272,30 @@ public class RestFaccade {
 	}
 
 	@GetMapping(value = "/pictures")
-	public ResponseEntity<List<String>> getExistingPictures(
+	public ResponseEntity<List<FileDTO>> getExistingPictures(
 			@RequestParam(value = "qrcode") String qrCode,
 			@RequestParam(value = "pictype") int pictureType) {
 		
-		List<String> existing = fileService.getExistingPictures(qrCode, pictureType);
+		List<FileDTO> existing = fileService.getExistingPictures(qrCode, pictureType);
 
-		return new ResponseEntity<List<String>>(existing, HttpStatus.OK);
+		return new ResponseEntity<List<FileDTO>>(existing, HttpStatus.OK);
 	}
 
 	// REST METHODS - END
 	// -----------------------------------------------------------------------------------------------
+	
+	@ExceptionHandler(Exception.class)
+	@ResponseBody
+	public ResponseEntity<String> exceptionHandle(Exception ex){
+		String message;
+		ErrorResult err;
+		
+		message = "A generic fault has ocurred at the server";
+		err = new ErrorResult(ErrorCode.GENERAL_SERVER_FAILURE, message, ErrorLevel.SEVERE, getClass());
+		logger.fatal(message, ex);
+		
+		return entityService.objectlessReturn(err);
+		
+	}
 
 }

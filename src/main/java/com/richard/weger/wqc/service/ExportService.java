@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -156,7 +157,7 @@ public class ExportService {
 				if (report instanceof CheckReport) {
 					fileName = ((CheckReport) report).getFileName();
 					fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
-					dto.setContentType("application/pdf");
+					dto.setContentType(MediaType.APPLICATION_PDF_VALUE);
 				} else if (report instanceof ItemReport) {
 					AbstractResult res = irHelper.getXlsFileName((ItemReport) report); 
 					if(res instanceof SuccessResult) {

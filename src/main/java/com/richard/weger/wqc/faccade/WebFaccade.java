@@ -140,7 +140,7 @@ public class WebFaccade {
 			headers.setExpires(-1);
 			headers.setContentType(MediaType.valueOf(dto.getContentType()));
 			headers.setContentLength(dto.getContent().length);
-			headers.setContentDispositionFormData("inline", dto.getFileName());
+			headers.add("Content-Disposition", "inline; filename=" + dto.getFileName());
 			
 			return new ResponseEntity<byte[]>(dto.getContent(), headers, HttpStatus.OK);
 		} else {
