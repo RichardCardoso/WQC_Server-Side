@@ -67,7 +67,7 @@ public class RestFaccade {
 	// REST METHODS - BEGIN
 	// -----------------------------------------------------------------------------------------------
 
-	@GetMapping(value = "/qrcode/projects")
+	@GetMapping(value = "/qrcode/projects", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Project> projectLoad(@RequestParam(value = "qrcode") String qrCode) {
 		
 		AbstractResult res = projectService.getSingle(qrCode);
@@ -81,7 +81,7 @@ public class RestFaccade {
 		
 	}
 
-	@PostMapping(value = "/qrcode/projects")
+	@PostMapping(value = "/qrcode/projects", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Project> projectCreate(@RequestParam(value = "qrcode") String qrCode, UriComponentsBuilder b) {
 
 		AbstractResult res;
@@ -96,7 +96,7 @@ public class RestFaccade {
 		return entityService.objectlessReturn(res);
 	}
 	
-	@GetMapping(value = "/devices/{deviceid}")
+	@GetMapping(value = "/devices/{deviceid}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Device> deviceLoadWithAndroidId(@PathVariable(value = "deviceid") String deviceid) {
 
 		AbstractResult res = deviceService.getSingle(deviceid);
@@ -109,7 +109,7 @@ public class RestFaccade {
 		return entityService.objectlessReturn(res);
 	}
 	
-	@GetMapping(value = "/roles/{roleDescription}")
+	@GetMapping(value = "/roles/{roleDescription}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Role> roleLoadByDescription(@PathVariable(value = "roleDescription") String roleDescription) {
 
 		AbstractResult res = roleService.getByDescription(roleDescription);
@@ -122,7 +122,7 @@ public class RestFaccade {
 		return entityService.objectlessReturn(res);
 	}
 	
-	@GetMapping(value="/{entity}")
+	@GetMapping(value="/{entity}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<List<DomainEntity>> entitiesList(
 			@RequestParam(value = "parentid", required = false) Long parentid,
 			@PathVariable(value = "entity") String entityName
@@ -139,7 +139,7 @@ public class RestFaccade {
 		
 	}
 	
-	@GetMapping(value="/{entity}/{id}")
+	@GetMapping(value="/{entity}/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<DomainEntity> entityGet(@PathVariable(value="id") Long id) {
 		
 		AbstractResult res = entityService.getEntity(id);
@@ -152,7 +152,7 @@ public class RestFaccade {
 		return entityService.objectlessReturn(res);
 	}
 			
-	@RequestMapping(value="/{entity}", method = {RequestMethod.POST, RequestMethod.PUT})
+	@RequestMapping(value="/{entity}", method = {RequestMethod.POST, RequestMethod.PUT}, produces = MediaType.APPLICATION_JSON_VALUE)
 	public <T extends DomainEntity> ResponseEntity<T> entityPost( 
 			@PathVariable(value="entity") String entityName, 
 			@RequestParam(value="parentid", required=false) Long parentid,
