@@ -1,5 +1,6 @@
 package com.richard.weger.wqc.service;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,6 +42,8 @@ public class QrTextHandler {
 		ParamConfigurations conf = rep.getDefaultConfig();
 		AppConstants appconst = FactoryAppConstants.getAppConstants();
 		Map<String, String> mapValues = new HashMap<>();
+		String sWork, sPartNumber, sDrawNumber;
+		File fWork;
 		
 		qrText = qrText.replace("\\", "").replace("/", "");
 
@@ -52,28 +55,40 @@ public class QrTextHandler {
 			}
 			qrText.replace("[", "");
 			qrText.replace("]", "");
-			sb.append(conf.getYearPrefix());
-			sb.append(qrText.substring(1, 3));
-			sb.append("/");
-			sb.append(qrText.substring(1, 3));
-			sb.append("-");
-			a = qrText.indexOf('-');
+			sb.append(conf.getYearPrefix());		// 20
+			sb.append(qrText.substring(1, 3));		// 2017
+			sb.append("/");							// 2017/
+			sb.append(qrText.substring(1, 3));		// 2017/17
+			sb.append("-");							// 2017/17-
+			a = qrText.indexOf('-');				
 			b = qrText.indexOf('-', a + 1);
-			sb.append(qrText.substring(a + 1, b));
-			sb.append("-___/");
-			b = qrText.indexOf('Z');
-			sb.append(qrText.substring(1, b - 1));
-			sb.append("/");
+			sb.append(qrText.substring(a + 1, b));	// 2017/17-1
+			sb.append("-___/");						// 2017/17-1-___/
+			b = qrText.indexOf('Z');				
+			sb.append(qrText.substring(1, b - 1));	// 2017/17-1-___/17-1-435
+			sb.append("/");							// 2017/17-1-___/17-1-435/
 
 			mapValues.put(appconst.getCOMMON_PATH_KEY(), sb.toString());
+			
+			sb.append("Konstruktion/");
+			sWork = conf.getServerPath() + conf.getRootPath() + sb.toString();
+			fWork = new File(sWork);
 
-			sb.append(conf.getOriginalDocsPath());
-			sb.append("Teil");
 			a = qrText.indexOf('T');
-			sb.append(String.format("%02d", Integer.valueOf(qrText.substring(a + 2, qrText.length()))));
-			sb.append("-Z");
+			sPartNumber = String.format("%02d", Integer.valueOf(qrText.substring(a + 2, qrText.length())));
 			b = qrText.indexOf('Z');
-			sb.append(String.format("%02d", Integer.valueOf(qrText.substring(b + 2, a - 1))));
+			sDrawNumber = String.format("%02d", Integer.valueOf(qrText.substring(b + 2, a - 1)));
+			
+			if(fWork.exists()) {
+				for (File f : fWork.listFiles()) {
+					String fName;
+					fName = f.getName();
+					if(fName.contains("Z" + sDrawNumber)) {
+						sb.append(fName);
+						break;
+					}
+				}
+			}
 
 			mapValues.put(appconst.getCONSTRUCTION_PATH_KEY(), sb.toString().concat("/"));
 

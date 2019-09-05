@@ -2,6 +2,7 @@ package com.richard.weger.wqc.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,10 +74,25 @@ public class ProjectService {
 		// Project load - end
 		
 		if(project != null) {
+			
 			// Reports handling - begin
-			helper.handleReports(project.getDrawingRefs().get(0), mapValues, false);
+			boolean saveResult = false;
+			if(helper.handleReports(project.getDrawingRefs().get(0), mapValues, false)) {
+				project = projectRep.save(project);
+				saveResult = project != null;
+			} else {
+				saveResult = true; 
+			}
 			// Reports handling - end
-			return new SingleObjectResult<>(Project.class, project);
+			if(saveResult) {
+				
+				// filter reports and drawings by drawing number
+				childFilter(project, drawingNumber);
+				
+				return new SingleObjectResult<>(Project.class, project);
+			} else {
+				return new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, "Failed to proccess report's file list for a project!", ErrorLevel.SEVERE, getClass());
+			}
 		} else {
 			String message = "No project with qr code '" + qrCode + "' was found!";
 			logger.info(message);
@@ -106,11 +122,6 @@ public class ProjectService {
 			newProject = true;
 			project = FactoryProject.getProject(mapValues);
 			drawing = project.getDrawingRefs().get(0);
-			int partNumber = Integer.valueOf(mapValues.get(c.getPART_NUMBER_KEY()));
-			Part p = new Part();
-			p.setNumber(partNumber);
-			p.setParent(drawing);
-			drawing.getParts().add(p);
 		} else {
 			logger.info("The project '" + qrCode + "' does exist.");
 			newProject = false;
@@ -146,10 +157,21 @@ public class ProjectService {
 		}
 
 		if(saveResult) {
+			// filter reports by drawing number
+			int drawingNumber = Integer.valueOf(mapValues.get(c.getDRAWING_NUMBER_KEY()));
+			childFilter(project, drawingNumber);
 			return new SingleObjectResult<>(Project.class, project);
 		} else {
 			return new ErrorResult(ErrorCode.ENTITY_NOT_FOUND, "Project creation failed!", ErrorLevel.SEVERE, getClass());
 		}
+	}
+	
+	private void childFilter(Project project, long drawingNumber) {
+		project.setDrawingRefs(project.getDrawingRefs().stream().filter(d -> d.getDnumber() == drawingNumber).collect(Collectors.toList()));
+		project.getDrawingRefs().stream().
+		forEach(d -> d.setReports(d.getReports().stream()
+									.filter(r -> r.getParent().getDnumber() == drawingNumber)
+									.collect(Collectors.toList())));
 	}
 	
 }

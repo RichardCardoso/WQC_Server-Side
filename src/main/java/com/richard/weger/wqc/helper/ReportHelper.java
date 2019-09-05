@@ -28,17 +28,19 @@ public class ReportHelper {
 		logger = Logger.getLogger(ParamConfigurationsRepository.class);
 	}
 
-	public void handleReports(DrawingRef drawing, Map<String, String> mapValues, boolean forceCreation) {
-		
+	public boolean handleReports(DrawingRef drawing, Map<String, String> mapValues, boolean forceCreation) {
 		long zeroPagesReportsCount;
+		long oldRepCount;
 		zeroPagesReportsCount = getZeroPagesReportsCount(drawing);
-		if (forceCreation || getReportsCount(drawing) == 0 || zeroPagesReportsCount > 0)
+		oldRepCount = getReportsCount(drawing);
+		if (forceCreation || oldRepCount == 0 || zeroPagesReportsCount > 0)
 		{
 			createReportsList(drawing, mapValues);
 		}
 		drawing.getReports().stream().filter(r -> r instanceof CheckReport).map(r -> (CheckReport) r).forEach(r -> {
 			r.getPages().forEach(p -> p.getMarks().stream().count());
 		});
+		return oldRepCount != getReportsCount(drawing);
 	}
 	
 	private long getZeroPagesReportsCount(DrawingRef drawing) {
@@ -65,13 +67,15 @@ public class ReportHelper {
 		conf = rep.getDefaultConfig();
 		projectFolder = new File(getReportFileLocation(mapValues));
 
-		// adiciona um relatório do tipo "ItemReport"
-		ItemReport ir = new ItemReport();
-		ir.setParent(drawing);
-		ir.setReference("0000");
-		drawing.getReports().add(ir);
-		ir.setItems((new ItemReportHelper()).getDefaultItems(ir));
-		ir.getItems().stream().forEach(i -> i.setParent(ir));
+		if(drawing.getReports().stream().filter(r -> r instanceof ItemReport).count() == 0) {
+			// adiciona um relatório do tipo "ItemReport"
+			ItemReport ir = new ItemReport();
+			ir.setParent(drawing);
+			ir.setReference("0000");
+			drawing.getReports().add(ir);
+			ir.setItems((new ItemReportHelper()).getDefaultItems(ir));
+			ir.getItems().stream().forEach(i -> i.setParent(ir));
+		}
 
 		if (projectFolder.exists()) {
 			// lista os arquivos da pasta do projeto
@@ -126,7 +130,7 @@ public class ReportHelper {
 			return sWork;
 		}
 		
-		if (fileCode.equals(strCode) && fileExt.equals(strExtension) && f.getName().contains(dNumberRef)) {
+		if (fileCode.equals(strCode) && fileExt.equals(strExtension) && f.getName().contains(dNumberRef + "-")) {
 			CheckReport report = drawing.getReports().stream()
 					.filter(r -> r instanceof CheckReport && r != null)
 					.map(r -> (CheckReport) r)
@@ -176,7 +180,7 @@ public class ReportHelper {
 	public long getReportsCount(DrawingRef d) {
 		long cnt = 0;
 		if(d.getReports() != null) {
-			cnt = d.getReports().size();
+			cnt = d.getReports().stream().filter(r -> r instanceof CheckReport).count();
 		}
 		return cnt;
 	}

@@ -19,6 +19,7 @@ import com.richard.weger.wqc.domain.DomainEntity;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.ParentAwareEntity;
 import com.richard.weger.wqc.domain.Report;
+import com.richard.weger.wqc.faccade.RestFaccade;
 import com.richard.weger.wqc.firebase.FirebaseMessagingHelper;
 import com.richard.weger.wqc.helper.ProjectHelper;
 import com.richard.weger.wqc.repository.DomainEntityRepository;
@@ -216,6 +217,7 @@ public class EntityService {
 	public <T> ResponseEntity<T> objectlessReturn(AbstractResult res) {
 		 if (res instanceof ErrorResult) {
 			HttpHeaders headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
+			headers.set("version", RestFaccade.APP_VERSION);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(null);
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
@@ -225,6 +227,7 @@ public class EntityService {
 	public <T> ResponseEntity<List<T>> objectListReturn(AbstractResult res) {
 		 if (res instanceof ErrorResult) {
 			HttpHeaders headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
+			headers.set("version", RestFaccade.APP_VERSION);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(null);
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);

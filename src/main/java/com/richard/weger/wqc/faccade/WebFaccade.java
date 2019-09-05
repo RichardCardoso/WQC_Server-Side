@@ -68,7 +68,7 @@ public class WebFaccade {
 
 	public WebFaccade() {
 		logger = Logger.getLogger(getClass());
-		logger.info("System started... Version 2.0.6.1");
+		logger.info("System started... Version " + RestFaccade.APP_VERSION);
 	}
 
 	public String getCurrentTime() {
@@ -82,6 +82,7 @@ public class WebFaccade {
 	public ModelAndView index(@ModelAttribute(value = "message") String message) {
 		ModelAndView mv = new ModelAndView("main");
 		mv.addObject("message", message);
+		mv.addObject("version", RestFaccade.APP_VERSION);
 		return mv;
 	}
 
