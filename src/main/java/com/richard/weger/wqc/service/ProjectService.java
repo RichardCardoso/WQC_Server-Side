@@ -1,5 +1,6 @@
 package com.richard.weger.wqc.service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.richard.weger.wqc.appconstants.AppConstants;
 import com.richard.weger.wqc.appconstants.FactoryAppConstants;
@@ -14,6 +16,7 @@ import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.FactoryProject;
 import com.richard.weger.wqc.domain.Part;
 import com.richard.weger.wqc.domain.Project;
+import com.richard.weger.wqc.domain.Report;
 import com.richard.weger.wqc.helper.ReportHelper;
 import com.richard.weger.wqc.repository.DrawingRefRepository;
 import com.richard.weger.wqc.repository.ProjectRepository;
@@ -87,7 +90,7 @@ public class ProjectService {
 			if(saveResult) {
 				
 				// filter reports and drawings by drawing number
-				childFilter(project, drawingNumber);
+				childFilter(project, drawingNumber, partNumber);
 				
 				return new SingleObjectResult<>(Project.class, project);
 			} else {
@@ -115,6 +118,9 @@ public class ProjectService {
 		
 		String projectRef = mapValues.get(c.getPROJECT_NUMBER_KEY());
 		
+		int drawingNumber = Integer.valueOf(mapValues.get(c.getDRAWING_NUMBER_KEY()));
+		int partNumber = Integer.valueOf(mapValues.get(c.getPART_NUMBER_KEY()));
+		
 		project = projectRep.findByReference(projectRef);
 		
 		if(project == null) {
@@ -125,8 +131,6 @@ public class ProjectService {
 		} else {
 			logger.info("The project '" + qrCode + "' does exist.");
 			newProject = false;
-			int drawingNumber = Integer.valueOf(mapValues.get(c.getDRAWING_NUMBER_KEY()));
-			int partNumber = Integer.valueOf(mapValues.get(c.getPART_NUMBER_KEY()));
 			drawing = project.getDrawingRefs().stream()
 					.filter(d -> d.getDnumber() == drawingNumber)
 					.findFirst().orElse(null);
@@ -158,20 +162,27 @@ public class ProjectService {
 
 		if(saveResult) {
 			// filter reports by drawing number
-			int drawingNumber = Integer.valueOf(mapValues.get(c.getDRAWING_NUMBER_KEY()));
-			childFilter(project, drawingNumber);
+			childFilter(project, drawingNumber, partNumber);
 			return new SingleObjectResult<>(Project.class, project);
 		} else {
 			return new ErrorResult(ErrorCode.ENTITY_NOT_FOUND, "Project creation failed!", ErrorLevel.SEVERE, getClass());
 		}
 	}
 	
-	private void childFilter(Project project, long drawingNumber) {
-		project.setDrawingRefs(project.getDrawingRefs().stream().filter(d -> d.getDnumber() == drawingNumber).collect(Collectors.toList()));
-		project.getDrawingRefs().stream().
-		forEach(d -> d.setReports(d.getReports().stream()
-									.filter(r -> r.getParent().getDnumber() == drawingNumber)
-									.collect(Collectors.toList())));
+	@Transactional(readOnly=true)
+	private void childFilter(Project project, long drawingNumber, long partNumber) {
+		DrawingRef dRef = project.getDrawingRefs().stream().filter(d -> d.getDnumber() == drawingNumber).findFirst().orElse(null);
+		if(dRef != null) {
+			Part pt = dRef.getParts().stream().filter(p -> p.getNumber() == partNumber).findFirst().orElse(null);
+			List<Report> rList = dRef.getReports().stream()
+					.filter(r -> r.getParent().getDnumber() == drawingNumber)
+					.collect(Collectors.toList());
+			if(rList.size() > 0 && pt != null) {
+				dRef.setParts(Collections.singletonList(pt));
+				dRef.setReports(rList);
+				project.setDrawingRefs(Collections.singletonList(dRef));
+			}
+		}
 	}
 	
 }

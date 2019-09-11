@@ -52,7 +52,7 @@ import jxl.common.Logger;
 @RequestMapping("/rest")
 public class RestFaccade {
 	
-	public static String APP_VERSION = "2.6.0.2";
+	public static String APP_VERSION = "2.6.0.3";
 		
 	@Autowired private ProjectService projectService;
 	@Autowired private DeviceService deviceService;
