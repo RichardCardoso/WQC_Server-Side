@@ -17,10 +17,10 @@ import com.richard.weger.wqc.domain.Item;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
 import com.richard.weger.wqc.result.AbstractResult;
-import com.richard.weger.wqc.result.EmptyResult;
 import com.richard.weger.wqc.result.ErrorResult;
 import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
 import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
+import com.richard.weger.wqc.result.SingleObjectResult;
 
 @Service
 public class ItemService {
@@ -93,7 +93,7 @@ public class ItemService {
 			e.printStackTrace();
 			return new ErrorResult(ErrorCode.FILE_UPLOAD_FAILED, "Failed to save a general pic's content into the disk!", ErrorLevel.SEVERE, getClass());
 		}
-		
-		return new EmptyResult();
+
+		return new SingleObjectResult<>(File.class, targetFile);
 	}
 }

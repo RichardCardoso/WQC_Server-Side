@@ -9,10 +9,13 @@ import javax.persistence.PersistenceContext;
 import org.apache.log4j.Logger;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.auditing.AuditingHandler;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.richard.weger.wqc.domain.Device;
 import com.richard.weger.wqc.domain.DomainEntity;
@@ -20,8 +23,8 @@ import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.ParentAwareEntity;
 import com.richard.weger.wqc.domain.Report;
 import com.richard.weger.wqc.faccade.RestFaccade;
-import com.richard.weger.wqc.firebase.FirebaseMessagingHelper;
 import com.richard.weger.wqc.helper.ProjectHelper;
+import com.richard.weger.wqc.messaging.WebSocketMessagingService;
 import com.richard.weger.wqc.repository.DomainEntityRepository;
 import com.richard.weger.wqc.repository.ParentAwareEntityRepository;
 import com.richard.weger.wqc.result.AbstractResult;
@@ -39,7 +42,8 @@ public class EntityService {
 	@Autowired private DomainEntityRepository rep;
 	@Autowired private ParentAwareEntityRepository parentRep;
 	@Autowired private ExportService exportService;
-	@Autowired private FirebaseMessagingHelper firebase;
+	@Autowired private WebSocketMessagingService messagingHandler;
+	@Autowired private AuditingHandler auditingHandler;
 	
 	@PersistenceContext
 	EntityManager em;
@@ -65,92 +69,129 @@ public class EntityService {
 	}
 	
 	public AbstractResult deleteEntity(Long id, Long version, String qrcode) {
-		DomainEntity e;
-		String message;
-		e = rep.getById(id);
-		message = "Failed to remove the entity!";
-		if(id == null || id == 0) {
-			return new ErrorResult(ErrorCode.INVALID_ENTITY_ID, "Invalid entity id was received!", ErrorLevel.SEVERE, getClass());
-		} else if (version == null) {
-			return new ErrorResult(ErrorCode.INVALID_ENTITY_VERSION, "Invalid entity version was received!", ErrorLevel.SEVERE, getClass());
-		} else if(e.getVersion() != version) {
-			return new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale. Please go back to the previous screen and try again.", ErrorLevel.SEVERE, getClass());
-		}
+		String message = "Failed to remove the entity!";
 		try {
-			rep.deleteById(id);
+			DomainEntity e;
+			DomainEntity parent = null;
 			e = rep.getById(id);
-			if(e == null) {
-				if(!Strings.isEmpty(qrcode)) {
-					firebase.sendUpdateNotice(qrcode);
-				} else {
-					logger.warn("Invalid qr code received at a DELETE procedure. Unable to send firebase push message!");
-				}
-				return new EmptyResult();
+			if(id == null || id == 0) {
+				return new ErrorResult(ErrorCode.INVALID_ENTITY_ID, "Invalid entity id was received!", ErrorLevel.SEVERE, getClass());
+			} else if (version == null) {
+				return new ErrorResult(ErrorCode.INVALID_ENTITY_VERSION, "Invalid entity version was received!", ErrorLevel.SEVERE, getClass());
+			} else if(e.getVersion() != version) {
+				return new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale. Please go back to the previous screen and try again.", ErrorLevel.SEVERE, getClass());
 			}
-		} catch (Exception ex) {
-			logger.fatal(message, ex);
+			if(e instanceof ParentAwareEntity) {
+				parent = ((ParentAwareEntity) e).getParent(DomainEntity.class);
+			}
+			try {
+				rep.deleteById(id);
+				e = rep.getById(id);
+				if(e == null) {
+					if(!Strings.isEmpty(qrcode)) {
+						Long parentId = -1L;
+						if(parent != null) {
+							parentId = parent.getId();	
+						}
+						messagingHandler.sendUpdateNotice(qrcode, id, parentId);
+					} else {
+						logger.warn("Invalid qr code received at a DELETE procedure. Unable to send firebase push message!");
+					}
+					if(parent != null) {
+						auditingHandler.markModified(parent);
+						rep.save(parent);
+					}
+					return new EmptyResult();
+				}
+			} catch (Exception ex) {
+				logger.fatal(message, ex);
+			}
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			return new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
 		}
 		return new ErrorResult(ErrorCode.ENTITY_DELETE_FAILED, message, ErrorLevel.SEVERE, getClass());
 	}
 	
+	@Transactional(readOnly=false)
 	public <T extends DomainEntity> AbstractResult postEntity(T entity, Long parentid, String entityName, String qrcode) {
 		
-		Long eId;
-		
-		if(entity == null) {
-			return new ErrorResult(ErrorCode.INVALID_ENTITY, "An invalid entity was received at a POST procedure!", ErrorLevel.SEVERE, getClass());
-		} else if (entity.getId() == null) {
-			return new ErrorResult(ErrorCode.INVALID_ENTITY_ID, "An invalid entity id was received at a POST procedure!", ErrorLevel.SEVERE, getClass());
-		} else if (Strings.isEmpty(entityName)) {
-			return new ErrorResult(ErrorCode.INVALID_ENTITY_NAME, "An invalid entity name was received at a POST procedure!", ErrorLevel.SEVERE, getClass());
-		}
-		
-		eId = entity.getId();
-		
-		AbstractResult res = forceJpaRefreshForQuery(entity, parentid);
-		if(res instanceof ErrorResult) {
-			return res;
-		}
-		
 		try {
-			entity = rep.save(entity);
-		} catch (Exception ex) {
-			ErrorResult errRes;
-			String message = null;
-			if(eId > 0) {
-				message = "Entity save failed!";
-				errRes = new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, message, ErrorLevel.SEVERE, getClass());
+			Long eId;
+			DomainEntity parent = null;
+			
+			if(entity == null) {
+				return new ErrorResult(ErrorCode.INVALID_ENTITY, "An invalid entity was received at a POST procedure!", ErrorLevel.SEVERE, getClass());
+			} else if (entity.getId() == null) {
+				return new ErrorResult(ErrorCode.INVALID_ENTITY_ID, "An invalid entity id was received at a POST procedure!", ErrorLevel.SEVERE, getClass());
+			} else if (Strings.isEmpty(entityName)) {
+				return new ErrorResult(ErrorCode.INVALID_ENTITY_NAME, "An invalid entity name was received at a POST procedure!", ErrorLevel.SEVERE, getClass());
+			} else if (entity instanceof ParentAwareEntity && parentid != null) {
+				parent = rep.getById(parentid);
+			}
+			
+			eId = entity.getId();
+			
+			AbstractResult res = forceJpaRefreshForQuery(entity, parentid);
+			if(res instanceof ErrorResult) {
+				return res;
+			}
+			
+			try {
+				entity = rep.save(entity);
+			} catch (Exception ex) {
+				ErrorResult errRes;
+				String message = null;
+				if(eId > 0) {
+					message = "Entity save failed!";
+					errRes = new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, message, ErrorLevel.SEVERE, getClass());
+				} else {
+					message = "Entity creation failed!";
+					errRes = new ErrorResult(ErrorCode.ENTITY_CREATION_FAILED, message, ErrorLevel.SEVERE, getClass());
+				}
+				logger.fatal(message, ex);
+				return errRes;
+			}
+			
+			if(entity != null) {
+				boolean shouldSendUpdateNotice;
+				
+				if(parent != null) {
+					auditingHandler.markModified(parent);
+					rep.save(parent);
+				}
+				
+				shouldSendUpdateNotice = !(entity instanceof ParamConfigurations || entity instanceof Device);
+				if(entity instanceof Report) {
+					Report r = (Report) entity;
+					exportService.export(r);
+				} 
+				if (shouldSendUpdateNotice) {
+					if(!Strings.isEmpty(qrcode)) {
+						Long parentId = -1L;
+						if(parent != null) {
+							parentId = parent.getId();	
+						}
+						messagingHandler.sendUpdateNotice(qrcode, entity.getId(), parentId);
+					} else {
+						logger.warn("Invalid qr code received at a POST procedure. Unable to send firebase push message!");
+					}
+				} else {
+					logger.info("Updates to " + entity.getClass().getSimpleName() + " does not require a notification to be sent to the client.");
+				}
+				SingleObjectResult<DomainEntity> oRes = new SingleObjectResult<>(DomainEntity.class, entity);
+				if(eId > 0) {
+					oRes.setUpdated(true);
+				}
+				return oRes;
 			} else {
-				message = "Entity creation failed!";
-				errRes = new ErrorResult(ErrorCode.ENTITY_CREATION_FAILED, message, ErrorLevel.SEVERE, getClass());
+				if(eId > 0) {
+					return new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, "Entity save failed!", ErrorLevel.SEVERE, getClass());
+				} else {
+					return new ErrorResult(ErrorCode.ENTITY_CREATION_FAILED, "Entity creation failed!", ErrorLevel.SEVERE, getClass());
+				}
 			}
-			logger.fatal(message, ex);
-			return errRes;
-		}
-		
-		if(entity != null) {
-			boolean shouldSendUpdateNotice;
-			shouldSendUpdateNotice = !(entity instanceof ParamConfigurations || entity instanceof Device);
-			if(entity instanceof Report) {
-				Report r = (Report) entity;
-				exportService.export(r);
-			} 
-			if (shouldSendUpdateNotice && !Strings.isEmpty(qrcode)) {
-				firebase.sendUpdateNotice(qrcode);
-			} else if (shouldSendUpdateNotice && Strings.isEmpty(qrcode)) {
-				logger.warn("Invalid qr code received at a POST procedure. Unable to send firebase push message!");
-			}
-			SingleObjectResult<DomainEntity> oRes = new SingleObjectResult<>(DomainEntity.class, entity);
-			if(eId > 0) {
-				oRes.setUpdated(true);
-			}
-			return oRes;
-		} else {
-			if(eId > 0) {
-				return new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, "Entity save failed!", ErrorLevel.SEVERE, getClass());
-			} else {
-				return new ErrorResult(ErrorCode.ENTITY_CREATION_FAILED, "Entity creation failed!", ErrorLevel.SEVERE, getClass());
-			}
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			return new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
 		}
 		
 	}

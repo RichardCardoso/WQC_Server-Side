@@ -1,8 +1,8 @@
-package com.richard.weger.wqc.firebase;
+package com.richard.weger.wqc.messaging;
 
 import java.io.IOException;
 
-import org.apache.http.client.ClientProtocolException;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -13,13 +13,20 @@ import org.springframework.stereotype.Service;
 
 import com.richard.weger.wqc.service.QrTextHandler;
 
+import jxl.common.Logger;
+
 @Service
-public class FirebaseMessagingHelper {
+public class FirebaseMessagingHelper implements IMessagingService {
+	
+	private Logger logger;
 	
 	@Autowired QrTextHandler qrHandler;
 	
-	public void sendUpdateNotice(String qrcode) {
+	@Override
+	public void sendUpdateNotice(String qrcode, Long entityId, Long parentId) {
 		// https://stackoverflow.com/questions/37576705/firebase-java-server-to-send-push-notification-to-all-devices
+		
+		logger = Logger.getLogger(getClass());
 		
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpPost post = new HttpPost("https://fcm.googleapis.com/fcm/send");
@@ -32,19 +39,18 @@ public class FirebaseMessagingHelper {
 		
 		JSONObject data = new JSONObject();
 		data.put("qrCode", qrcode);
+		data.put("id", entityId);
+		data.put("parentId", parentId);
 		
 		message.put("data", data);
 		
 		post.setEntity(new StringEntity(message.toString(), "UTF-8"));
-//		HttpResponse response = null;
 		
 		try {
-//			response = client.execute(post);
-			client.execute(post);
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
+			HttpResponse response = client.execute(post);
+			logger.info("Firebase message send result: " + response.getStatusLine().getStatusCode());
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.fatal("Firebase message send error", e);
 		}
 		
 	}

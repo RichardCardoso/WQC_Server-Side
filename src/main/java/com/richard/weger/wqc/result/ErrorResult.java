@@ -39,7 +39,8 @@ public class ErrorResult extends AbstractResult {
 		BASE_FILE_RETRIEVAL_FAILED,
 		BASE_FILE_IO_FAILED,
 		UNKNOWN_ERROR,
-		GENERAL_SERVER_FAILURE
+		GENERAL_SERVER_FAILURE,
+		MESSAGE_BROADCAST_FAILED
 	}
 	
 	private String code;
@@ -75,6 +76,8 @@ public class ErrorResult extends AbstractResult {
 		} else if (level == ErrorLevel.LOG){
 			logger.info(description);
 		}
+		
+		setLevel(level);
 		
 	}
 	

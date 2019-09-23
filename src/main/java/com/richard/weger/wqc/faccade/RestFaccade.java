@@ -4,13 +4,13 @@ import java.io.File;
 import java.net.URI;
 import java.util.List;
 
-import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,12 +34,12 @@ import com.richard.weger.wqc.domain.dto.FileDTO;
 import com.richard.weger.wqc.result.AbstractResult;
 import com.richard.weger.wqc.result.EmptyResult;
 import com.richard.weger.wqc.result.ErrorResult;
+import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
+import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
 import com.richard.weger.wqc.result.ResultService;
 import com.richard.weger.wqc.result.ResultWithContent;
 import com.richard.weger.wqc.result.SingleObjectResult;
 import com.richard.weger.wqc.result.SuccessResult;
-import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
-import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
 import com.richard.weger.wqc.service.DeviceService;
 import com.richard.weger.wqc.service.EntityService;
 import com.richard.weger.wqc.service.FileService;
@@ -52,7 +52,7 @@ import jxl.common.Logger;
 @RequestMapping("/rest")
 public class RestFaccade {
 	
-	public static String APP_VERSION = "2.6.0.3";
+	public static String APP_VERSION = "2.7.0.1";
 		
 	@Autowired private ProjectService projectService;
 	@Autowired private DeviceService deviceService;
@@ -173,10 +173,16 @@ public class RestFaccade {
 		
 		AbstractResult res;
 		
-		res = entityService.postEntity(entity, parentid, entityName, qrcode);
+		try {
+			res = entityService.postEntity(entity, parentid, entityName, qrcode);
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
+			return entityService.objectlessReturn(err);
+		}
 		
 		if (res instanceof SuccessResult) {
 			SingleObjectResult<DomainEntity> oRes = ResultService.getSingleResultContainer(res, DomainEntity.class);
+			
 			
 			if(oRes.isUpdated()) {
 				return new ResponseEntity<T>(entity, HttpStatus.OK);
@@ -197,7 +203,14 @@ public class RestFaccade {
 			@RequestParam(value="id") Long id, @RequestParam(value="version") Long version,
 			@RequestParam(value="qrcode") String qrcode) {
 		
-		AbstractResult res = entityService.deleteEntity(id, version, qrcode);
+		AbstractResult res;
+		
+		try {	
+			res = entityService.deleteEntity(id, version, qrcode);
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
+			return entityService.objectlessReturn(err);
+		}
 
 		if (res instanceof SuccessResult) {
 			return ResponseEntity.status(HttpStatus.OK).body(null);
