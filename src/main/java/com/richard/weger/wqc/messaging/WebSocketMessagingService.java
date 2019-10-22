@@ -17,9 +17,9 @@ import com.richard.weger.wqc.spring.websocket.WebSocketHandler;
 public class WebSocketMessagingService implements IMessagingService {
 	
 	@Autowired WebSocketHandler handler;
-
+	
 	@Override
-	public void sendUpdateNotice(String qrcode, Long entityId, Long parentId) {
+	public synchronized void sendUpdateNotice(String qrcode, Long entityId, Long parentId) {
 		MessagingDTO dto = new MessagingDTO();
 		dto.setQrcode(qrcode);
 		dto.setId(entityId);

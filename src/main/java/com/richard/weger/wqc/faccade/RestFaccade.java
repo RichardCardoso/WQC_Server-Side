@@ -52,7 +52,7 @@ import jxl.common.Logger;
 @RequestMapping("/rest")
 public class RestFaccade {
 	
-	public static String APP_VERSION = "2.7.0.2";
+	public static String APP_VERSION = "2.7.1.1";
 		
 	@Autowired private ProjectService projectService;
 	@Autowired private DeviceService deviceService;
@@ -240,6 +240,18 @@ public class RestFaccade {
 		}
 		
 		return entityService.objectlessReturn(res);
+	}
+	
+	@GetMapping(value = "/pdfdocuments")
+	public ResponseEntity<List<FileDTO>> getExistingPdfs(
+			@RequestParam(value = "qrcode") String qrCode) {
+		
+		List<FileDTO> existing = fileService.getExistingPdfs(qrCode);
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("version", APP_VERSION);
+
+		return new ResponseEntity<List<FileDTO>>(existing, headers, HttpStatus.OK);
 	}
 
 	@GetMapping(value = "/pdfdocument")

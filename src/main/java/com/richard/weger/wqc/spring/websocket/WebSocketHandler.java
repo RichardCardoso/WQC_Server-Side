@@ -2,7 +2,8 @@ package com.richard.weger.wqc.spring.websocket;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ import com.richard.weger.wqc.result.MultipleObjectResult;
 @Service
 public class WebSocketHandler extends TextWebSocketHandler {
 	
-	List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+	Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
 	
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) {

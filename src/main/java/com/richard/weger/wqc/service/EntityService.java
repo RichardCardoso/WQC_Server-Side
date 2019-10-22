@@ -74,7 +74,7 @@ public class EntityService {
 			DomainEntity e;
 			DomainEntity parent = null;
 			e = rep.getById(id);
-			if(id == null || id == 0) {
+			if(id == null || id == 0 || e == null) {
 				return new ErrorResult(ErrorCode.INVALID_ENTITY_ID, "Invalid entity id was received!", ErrorLevel.SEVERE, getClass());
 			} else if (version == null) {
 				return new ErrorResult(ErrorCode.INVALID_ENTITY_VERSION, "Invalid entity version was received!", ErrorLevel.SEVERE, getClass());

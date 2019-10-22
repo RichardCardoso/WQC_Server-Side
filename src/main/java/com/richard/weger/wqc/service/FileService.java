@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.richard.weger.wqc.appconstants.AppConstants;
 import com.richard.weger.wqc.appconstants.FactoryAppConstants;
+import com.richard.weger.wqc.domain.CheckReport;
+import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.ParamConfigurations;
+import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.dto.FileDTO;
 import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
 import com.richard.weger.wqc.result.AbstractResult;
@@ -27,6 +31,7 @@ import com.richard.weger.wqc.result.ErrorResult.ErrorCode;
 import com.richard.weger.wqc.result.ErrorResult.ErrorLevel;
 import com.richard.weger.wqc.result.ResultService;
 import com.richard.weger.wqc.result.SingleObjectResult;
+import com.richard.weger.wqc.result.SuccessResult;
 
 @Service
 public class FileService {
@@ -34,6 +39,7 @@ public class FileService {
 	@Autowired private ParamConfigurationsRepository paramConfigsRep;
 	@Autowired private QrTextHandler handler;
 	@Autowired private ItemService itemService;
+	@Autowired private ProjectService projectService;
 	
 	AppConstants c;
 	Logger logger;
@@ -195,6 +201,54 @@ public class FileService {
 		return headers;
 	}
 	
+	public List<FileDTO> getExistingPdfs(String qrcode) {
+		List<FileDTO> existing;
+		ParamConfigurations conf;
+		String filePath;
+		Project p;
+		AbstractResult res;
+		Map<String, String> mapValues;
+		
+		conf = paramConfigsRep.getDefaultConfig();
+		existing = new ArrayList<>();
+		res = projectService.getSingle(qrcode);
+		mapValues = handler.getParameters(qrcode);
+		
+		if(res instanceof SuccessResult) {
+	
+			p = ResultService.getSingleResult(res, Project.class);
+			if(p != null) {
+				List<String> targets = p.getDrawingRefs().stream()
+						.flatMap(d -> d.getReports().stream()
+									.filter(x -> x instanceof CheckReport)
+									.map(x -> ((CheckReport) x).getFileName())
+								)
+						.collect(Collectors.toList());
+				
+				filePath = "//"
+						.concat(conf.getServerPath())
+						.concat(conf.getRootPath())
+						.concat(mapValues.get(FactoryAppConstants.getAppConstants().getCOMMON_PATH_KEY()));
+				
+				File rootFolder = new File(filePath);
+				for(String target : targets) {
+					File f = getReportFile(rootFolder, target);
+					if(f != null) {
+						FileDTO result = new FileDTO();
+						result.setFileName(target);
+						result.setFileSize(f.length());
+						result.setLastModifiedDate(f.lastModified());
+						existing.add(result);
+					}
+				}
+			}
+			
+		}
+		
+		return existing;
+	}
+	
+	
 	public AbstractResult getOriginalPdf(String filename, String qrcode) {
 		ByteArrayResource pdf;
 		Map<String, String> mapValues;
@@ -210,16 +264,34 @@ public class FileService {
 		String filePath = "//"
 				.concat(conf.getServerPath())
 				.concat(conf.getRootPath())
-				.concat(mapValues.get(FactoryAppConstants.getAppConstants().getTECHNICAL_PATH_KEY()))
-				.concat(filename);
+				.concat(mapValues.get(FactoryAppConstants.getAppConstants().getCOMMON_PATH_KEY()));
+//				.concat(filename);
 		try {
-			pdf = new ByteArrayResource(Files.readAllBytes(new File(filePath).toPath()));
+			File pdfFile = getReportFile(new File(filePath), filename);
+			pdf = new ByteArrayResource(Files.readAllBytes(pdfFile.toPath()));
 		} catch (IOException e) {
 			String message = "There was a problem while trying to access the following file: '" + filePath + "'! Creation proccess aborted!";
 			logger.fatal(message, e);
 			return new ErrorResult(ErrorCode.FILE_DOWNLOAD_PREPARATION_FAILED, message, ErrorLevel.SEVERE, getClass());
 		}
 		return new SingleObjectResult<>(ByteArrayResource.class, pdf);
+	}
+	
+	private File getReportFile(File rootFolder, String targetFilename) {
+		if(rootFolder != null && targetFilename != null) {
+			for(File f : rootFolder.listFiles()) {
+				if(f.isDirectory()) {
+					File ret = getReportFile(f, targetFilename);
+					if(ret != null) {
+						return ret;
+					}
+				}
+				if(f.getName().contains(targetFilename)) {
+					return f;
+				}
+			}
+		}
+		return null;
 	}
 	
 	private String getPictureAbsolutePath(String filename, String qrcode) {
