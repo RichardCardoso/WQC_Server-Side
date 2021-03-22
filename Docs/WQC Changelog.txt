@@ -1,0 +1,199 @@
+Version:1.2
+Date: 2018/09/04
+-Fixed a bug related to the “QualityControl” folder creation. This bug was causing the project upload proccess to fail
+-The EL and MG marks were implemented.
+-Improved permissions grant and Qr read proccess functionalities
+
+Version:1.3
+Date: 2018/09/05
+-Fixed a bug related to the configurations file load (json). This bug was causing the configurations screen activity to crash
+-Implemented log routine for the configurations activity
+
+Version:1.4
+Date: 2018/09/06
+-Improved project upload routine's performance
+-The upload result will now be unziped
+
+Version:2.0
+Date: 2018/10/24
+-Remote/shared MYSQL database is going to be used (instead of a local JSON file)
+-Firebird push notifications implemented - to simulate a 'real-time' function
+-Users / roles managing added
+
+Version:2.0.1
+Date: 2018/10/26
+-Manual input for database parameters is now implemented
+-Mark information is now displayed when taping over the mark
+
+Version:2.0.2
+Date: 2018/11/02
+-Multi-user functions functionality tests finished
+-Button texts changed to icons
+-Documents are visible through the web-based admin interface
+
+Version:2.0.3
+Date: 2018/12/11
+-It is now possible to take 'general' pictures (not associated to a 'kontrollkarte item') whose names will be ending with 'QP'
+-Datasheets will be obtained only for the corresponding drawing (from the scanned QR code)
+-Technician role (TE) is now included. This special role has 'read-only' permission to the reports but can take 'general pictures' as well
+-Pdf files search is now done also inside the 'kundendaten' subfolders
+-document codes updated
+
+Version: 2.0.4
+Date: 2019/02/20
+-'Project submit' screen changed to 'Project info' screen. Now it updates the state of the project/drawing instead (client name, general comments and current status - finished/not finished)
+	Finish checkbox can only be checked if there are no pending items (like 'not checked' kontrolkart items and pdf documents without marks)
+	When project/drawing state is set to finished, it's reports are automatically updated on the server
+	After setting a project/drawing status to finished, no further change is allowed (but general pictures can still be taken)
+	In order to do any further changes, project status must be set to 'not finished' (by unmarking the 'finished' checkbox)
+
+Version: 2.0.5
+Date: 2019/03/06
+-Fixed a bug that caused the app to crash when hitting the 'general pictures' button
+-Fixed a bug related to the project's reference (ex.: '17-1-435') and the drawing's number association
+
+Version: 2.0.6
+Date: 2019/03/07
+-Existing / readable files are no longer a mandatory condition in order to create a project
+-Apk will show a message when a missing file access attempt is made.
+
+Version: 2.0.6.1
+Date: 2019/03/12
+-Logging level increased
+-Unused java class removed from persistence context (GeneralPicture)
+
+Version: 2.0.6.2
+Date: 2019/03/13
+-Fixed an incorrect database's 'unique constraint' to match the business roles (one unique drawing number per project - instead of one 'global' unique drawing number)
+-Fixed save strategy for new projects (old code was resulting in a 'deadlock' exception)
+
+Version: 2.5.0.0
+Date: 2019/05/27
+A) Functional changes:
+-It's not possible to set a 'project' as fished. Instead, every report has it's own finish state. 
+--For 'Kontrolkarte' report, it can only be set as finished when there are no more 'not checked' items
+---If the client name has not been set yet, the client will be prompted to inform it. If this data is not provided then the report state will not change.
+--For Check/Mark reports, they can only be set as finished when there is at least one mark on it
+--Changing a report to a 'finished' state blocks the same report for future changes (unless it's set back to unfinished state)
+--Reports preview at the browser interface will now get an updated version of the report, even if it's not finished
+-It is now possible to assign multiple roles to a single device. Upon marks making, a 'primary' role should be selected (at the mark creation screen) to be assigned to the new mark
+-Drawing's 'time-lock' feature was replaced by 'Spring JPA optmistic locking'.
+B) Structure changes
+-Changed ORM framework from 'pure' hibernate to Spring JPA
+-DB connections pooling is now done by the default configurations of Spring JPA - in order to avoid pooling exceptions due to custom parameters
+-Changed controller's methods in order to have generic methods (one for each operation and reusable for all entities - devices, roles, etc)
+-Changed rest methods endpoints naming strategy
+-Database settings on the server should now be set at a file named 'database.properties'. After any changes to this file, tomcat must be restarted in order to apply the changes
+-Code lines ammount was substantially reduced (both for server and app) due to the generic methods creation, enpoints naming strategy change and DomainEntity concept application.
+
+Version: 2.6.0.0
+Date: 2019/08/22
+-AbstractResult class implemented.
+-Error codes for the common errors were implemented
+
+Version: 2.6.0.1
+Date: 2019/09/02
+-RestFaccade methods are now 'forced' to produce a json return (in order to prevent producing octet-streams, which leads to a "no HttpMessageConverter found" error)
+
+Version: 2.6.0.2
+Date: 2019/09/05
+-Changed folder searching routine to ignore 'Teil' information on the folder name
+-Added version info at the webpage main page
+-Added version info at the app main page
+
+Version: 2.6.0.3
+Date: 2019/09/10
+-Fixed a bug regarding drawing and part(teil) numbers
+
+Version: 2.7.0.0
+Date: 2019/09/17
+App Changes:
+-Visual update to buttons
+-CheckReport navigation buttons (previous/next) removed
+-CheckReport swipe gesture implemented to replace the navigation buttons
+-Waiting screens optimized
+-GeneralPictures name label 'optimized'
+-Implemented android notification to alert for project changes
+-Fixed a bug related to ItemPictures capture
+
+Version: 2.7.0.2
+Date: 2019/09/23
+App Changes:
+-FCM was replaced by Spring Websocket, making the app no longer rely on an internet connection
+
+Version: 2.7.0.3
+Date: 2019/09/30
+App Changes:
+-Visual changes to general pictures list screen
+-Visual changes to picture viewer screen
+-Changed general pictures capturing strategy:
+--Upon taking the first picture, another screen will be shown (which will be showing the took picture)
+--From this screen, it's possible to capture new ones (which adds them to the list) and also uploading them the took ones to the server.
+-Changed ItemReport picture capturing strategy:
+--Taping over the 'plus' (+) symbol of an item OR over the 'capture' button of an item will trigger the capture screen.
+--Taping over the 'camera' symbol of an item will show it's current picture
+-Changed CheckReport pages swipe implementation (it is now more responsive than before)
+
+Version: 2.7.1.0
+Date: 2019/10/18
+App Changes:
+-Pictures display performance was improved
+-Visual changes / fixes to general pictures list screen
+-Visual changes to ItemReport (Kontrollkarte) screen
+-General pictures capture performance was improved
+-Multi-picture mode + remove button implemented (for general pictures)
+-The performance of the routine used to check for server assets (pictures/pdf files) was improved
+Known bugs:
+-Going back to the general pictures list screen after taking/uploading new pictures causes the list to be blank.
+
+Version: 2.7.1.1
+Date: 2019/10/21
+App Changes:
+-Fixed the previous known bug (blank general pictures list)
+-Not checked items will have a red background title instead of a red background for the whole item
+-Fixed a bug that was leading the app to keep waiting for response after saving an item at 'kontrollkarte'
+-Updating the server war file is no longer needed when only the last digits of the version number changes (i.e. from X.X.X.0 to X.X.X.1)
+
+Version: 2.7.1.2
+Date: 2019/10/22
+App Changes:
+-Removed isReachable routine which was used to speed up checking wheter an address was valid or not.
+ This routine was causing the app to freeze during the project load request
+
+
+Version: 2.7.1.3
+Date: 2019/10/22
+App Changes:
+-isReachable routine was once again enabled
+-Logging spots increased in order to get the cause of a freeze error
+
+
+Version: 2.7.1.4
+Date: 2019/10/22
+App Changes:
+-Temporarily removed outdated pdf checking due to an error on the server routine. During startup the app will, instead, download again all pdf files either they are outdated or not.
+
+App Version: 2.1.7.5
+Date: 2019/10/22
+-Reverted the removal of the oudated checking routine
+
+Server Version: 2.7.1.1
+Date: 2019/10/22
+-Changed folder scan starting path from "\auftrag" root to the 'inner' project folder root path
+
+App Version: 2.1.7.6
+Date: 2020/04/09
+-Encapsulated qr translation routine for error tracking 
+
+App Version: 2.1.7.7
+Date: 2020/04/15
+-Encapsulated photo capture routine for error tracking
+
+App Version: 2.1.7.8
+Date: 2020/04/27
+-Fixed a bug where the 'pictures' folder did not exist before capturing images.
+
+App Version: 2.1.7.10
+-Fixed a bug where the 'kontrollkarte' list was rolling back to the first item after changing an item's data
+-Fixed a bug where the pictures of 'kontrollkarte' items were not being saved / displayed / uploaded to the server
+-After sucessfully adding a mark at a 'CheckReport', the mark add mode will stay enabled allowing for more marks to be added without having to tap again on the add button.
