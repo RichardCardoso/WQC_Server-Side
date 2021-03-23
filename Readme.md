@@ -22,4 +22,4 @@ Mysql Community Server: https://dev.mysql.com/downloads/mysql/
 
 # Changelog
 
-https://access.weger.it/git/weger/wqc_client_side/src/branch/master/README.md
+https://access.weger.it/git/weger/wqc_client_side/src/branch/master/README.md#changelog
