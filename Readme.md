@@ -11,6 +11,10 @@ When the checkings are done, its possible to export the final reports in .pdf an
 Programing languade: Java  
 IDE: Eclipse  
 
+# Updated .war file
+
+Please refer to the 'Deploy\Release' folder in order to get the last version of the .war file
+
 # Required softwares for production server
 Apache Tomcat 8.0.53 Server (Download core binary distribution): https://tomcat.apache.org/download-80.cgi  
 Java SE: https://www.oracle.com/technetwork/java/javase/downloads/jdk11-downloads-5066655.html  
