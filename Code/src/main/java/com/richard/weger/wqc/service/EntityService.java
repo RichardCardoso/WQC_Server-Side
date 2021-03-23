@@ -10,6 +10,7 @@ import javax.persistence.PersistenceContext;
 import org.apache.log4j.Logger;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.auditing.AuditingHandler;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,12 +28,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.richard.weger.wqc.domain.Device;
 import com.richard.weger.wqc.domain.DomainEntity;
-import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.ParentAwareEntity;
-import com.richard.weger.wqc.domain.Part;
 import com.richard.weger.wqc.domain.Report;
-import com.richard.weger.wqc.faccade.RestFaccade;
 import com.richard.weger.wqc.helper.ProjectHelper;
 import com.richard.weger.wqc.messaging.WebSocketMessagingService;
 import com.richard.weger.wqc.repository.DomainEntityRepository;
@@ -48,6 +46,9 @@ import com.richard.weger.wqc.result.SingleObjectResult;
 
 @Service
 public class EntityService {
+	
+	@Value("${build.version}")
+	private String appVersion;
 	
 	@Autowired private DomainEntityRepository rep;
 	@Autowired private ParentAwareEntityRepository parentRep;
@@ -311,7 +312,7 @@ public class EntityService {
 	public <T> ResponseEntity<T> objectlessReturn(AbstractResult res) {
 		 if (res instanceof ErrorResult) {
 			HttpHeaders headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
-			headers.set("version", RestFaccade.APP_VERSION);
+			headers.set("version", getAppVersion());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(null);
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
@@ -321,11 +322,15 @@ public class EntityService {
 	public <T> ResponseEntity<List<T>> objectListReturn(AbstractResult res) {
 		 if (res instanceof ErrorResult) {
 			HttpHeaders headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
-			headers.set("version", RestFaccade.APP_VERSION);
+			headers.set("version", getAppVersion());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(null);
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
 		}
+	}
+
+	public String getAppVersion() {
+		return appVersion;
 	}
 	
 	

@@ -51,9 +51,7 @@ import jxl.common.Logger;
 @RestController
 @RequestMapping("/rest")
 public class RestFaccade {
-	
-	public static String APP_VERSION = "2.7.1.1";
-		
+			
 	@Autowired private ProjectService projectService;
 	@Autowired private DeviceService deviceService;
 	@Autowired private RoleService roleService;
@@ -77,7 +75,7 @@ public class RestFaccade {
 		if (res instanceof ResultWithContent) {
 			Project project = ResultService.getSingleResult(res, Project.class);
 			HttpHeaders headers = new HttpHeaders();
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return new ResponseEntity<>(project, headers, HttpStatus.OK);
 		}
 		
@@ -108,7 +106,7 @@ public class RestFaccade {
 		if (res instanceof ResultWithContent) {
 			Device device = ResultService.getSingleResult(res, Device.class);
 			HttpHeaders headers = new HttpHeaders();
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return new ResponseEntity<>(device, headers, HttpStatus.OK);
 		}
 		
@@ -123,7 +121,7 @@ public class RestFaccade {
 		if (res instanceof ResultWithContent) {
 			Role role = ResultService.getSingleResult(res, Role.class);
 			HttpHeaders headers = new HttpHeaders();
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return new ResponseEntity<>(role, headers, HttpStatus.OK);
 		}
 		
@@ -140,7 +138,7 @@ public class RestFaccade {
 		
 		if (res instanceof ResultWithContent) {
 			HttpHeaders headers = new HttpHeaders();
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			List<DomainEntity> list = ResultService.getMultipleResult(res, DomainEntity.class);
 			return new ResponseEntity<>(list, headers, HttpStatus.OK);
 		}
@@ -156,7 +154,7 @@ public class RestFaccade {
 		
 		if(res instanceof ResultWithContent) {
 			HttpHeaders headers = new HttpHeaders();
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			DomainEntity e = ResultService.getSingleResult(res, DomainEntity.class);
 			return new ResponseEntity<DomainEntity>(e, headers, HttpStatus.OK);
 		}
@@ -230,12 +228,12 @@ public class RestFaccade {
 		AbstractResult res;
 		res = fileService.pictureUpload(qrCode, fileName, file, pictureType, itemId);
 		headers = new HttpHeaders();
-		headers.set("version", APP_VERSION);
+		headers.set("version", entityService.getAppVersion());
 
 		if (res instanceof SuccessResult) {
 			String newName = ResultService.getSingleResult(res, File.class).getName();
 			headers = fileService.getHeadersWithFilenames(fileName, newName);
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return ResponseEntity.ok().headers(headers).body(null);
 		}
 		
@@ -249,7 +247,7 @@ public class RestFaccade {
 		List<FileDTO> existing = fileService.getExistingPdfs(qrCode);
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.set("version", APP_VERSION);
+		headers.set("version", entityService.getAppVersion());
 
 		return new ResponseEntity<List<FileDTO>>(existing, headers, HttpStatus.OK);
 	}
@@ -263,7 +261,7 @@ public class RestFaccade {
 		AbstractResult res;
 		
 		headers = new HttpHeaders();
-		headers.set("version", APP_VERSION);
+		headers.set("version", entityService.getAppVersion());
 //		headers.add("Content-Disposition", "inline; filename=" + filename);
 		
 		res = fileService.getOriginalPdf(filename, qrcode);
@@ -278,7 +276,7 @@ public class RestFaccade {
 					.body(ResultService.getSingleResult(res, ByteArrayResource.class));
 		} else {
 			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.headers(headers)
 					.body(null);
@@ -293,14 +291,14 @@ public class RestFaccade {
 		HttpHeaders headers;
 		
 		headers = new HttpHeaders();
-		headers.set("version", APP_VERSION);
+		headers.set("version", entityService.getAppVersion());
 //		headers.add("Content-Disposition", "inline; filename=" + filename);
 		
 		AbstractResult res = fileService.getPicture(filename, qrcode);
 
 		if (res instanceof EmptyResult) {
 			headers.add("fileName", filename);
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(null);
 		} else if (res instanceof SingleObjectResult) {
 			ByteArrayResource iRes = ResultService.getSingleResult(res, ByteArrayResource.class);
@@ -311,7 +309,7 @@ public class RestFaccade {
 					.body(iRes);
 		} else {
 			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
-			headers.set("version", APP_VERSION);
+			headers.set("version", entityService.getAppVersion());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.headers(headers)
 					.body(null);
@@ -326,7 +324,7 @@ public class RestFaccade {
 		List<FileDTO> existing = fileService.getExistingPictures(qrCode, pictureType);
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.set("version", APP_VERSION);
+		headers.set("version", entityService.getAppVersion());
 
 		return new ResponseEntity<List<FileDTO>>(existing, headers, HttpStatus.OK);
 	}

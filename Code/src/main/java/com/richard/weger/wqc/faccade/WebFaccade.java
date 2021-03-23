@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -66,9 +67,10 @@ public class WebFaccade {
 	
 	Logger logger;
 
-	public WebFaccade() {
+	@PostConstruct
+	public void postConstruct() {
 		logger = Logger.getLogger(getClass());
-		logger.info("System started... Version " + RestFaccade.APP_VERSION);
+		logger.info("System started... Version " + entityService.getAppVersion());
 	}
 
 	public String getCurrentTime() {
@@ -82,7 +84,7 @@ public class WebFaccade {
 	public ModelAndView index(@ModelAttribute(value = "message") String message) {
 		ModelAndView mv = new ModelAndView("main");
 		mv.addObject("message", message);
-		mv.addObject("version", RestFaccade.APP_VERSION);
+		mv.addObject("version", entityService.getAppVersion());
 		return mv;
 	}
 
