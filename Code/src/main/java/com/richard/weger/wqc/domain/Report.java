@@ -1,6 +1,7 @@
 package com.richard.weger.wqc.domain;
 
 import javax.persistence.Entity;
+import javax.persistence.Lob;
 import javax.persistence.Table;
 
 @SuppressWarnings("serial")
@@ -16,6 +17,17 @@ public abstract class Report extends ParentAwareEntity {
 	
 	private String reference;
 	
+	@Lob
+	private String comments;
+	
+	public String getComments() {
+		return comments;
+	}
+
+	public void setComments(String comments) {
+		this.comments = comments;
+	}
+
 	private boolean finished;
 	
 	public boolean isFinished() {

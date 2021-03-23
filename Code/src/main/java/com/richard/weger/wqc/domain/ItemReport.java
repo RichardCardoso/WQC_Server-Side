@@ -31,8 +31,6 @@ public class ItemReport extends Report {
 	private List<Item> items;
 	
 	private String client;
-	
-	private String comments;
 
 	public ItemReport() {
 		this.items = new ArrayList<>();
@@ -53,13 +51,4 @@ public class ItemReport extends Report {
 	public void setClient(String client) {
 		this.client = client;
 	}
-
-	public String getComments() {
-		return comments;
-	}
-
-	public void setComments(String comments) {
-		this.comments = comments;
-	}
-
 }
