@@ -4,6 +4,7 @@ import java.util.List;
 
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import javax.persistence.Transient;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -16,6 +17,7 @@ public abstract class ParentAwareEntity extends AuditableEntity {
 	@JsonIgnore
 	private DomainEntity parent;
 	
+	@Transient
 	private String parentJson;
 	
 	public String getParentJson() {
