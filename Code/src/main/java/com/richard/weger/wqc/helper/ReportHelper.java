@@ -1,6 +1,8 @@
 package com.richard.weger.wqc.helper;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.richard.weger.wqc.appconstants.AppConstants;
 import com.richard.weger.wqc.appconstants.FactoryAppConstants;
+import com.richard.weger.wqc.domain.BaseCheckReport;
 import com.richard.weger.wqc.domain.CheckReport;
 import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.ItemReport;
@@ -61,11 +64,13 @@ public class ReportHelper {
 
 	private void createReportsList(DrawingRef drawing, Map<String, String> mapValues) {
 		ParamConfigurations conf;
-		File projectFolder;
+		List<File> searchFolders;
 		File[] fList;
 
 		conf = rep.getDefaultConfig();
-		projectFolder = new File(getReportFileLocation(mapValues));
+		searchFolders = Arrays.asList(
+			new File(getCommonPathLocation(mapValues))
+		);
 
 		if(drawing.getReports().stream().filter(r -> r instanceof ItemReport).count() == 0) {
 			// adiciona um relatório do tipo "ItemReport"
@@ -77,35 +82,30 @@ public class ReportHelper {
 			ir.getItems().stream().forEach(i -> i.setParent(ir));
 		}
 
-		if (projectFolder.exists()) {
-			// lista os arquivos da pasta do projeto
-			fList = projectFolder.listFiles();
-
-			// itera para selecionar cada um dos tipos de relatório utilizados
-			for (int i = 0; i <= 3; i++) {
-				String strCode;
-				String strExtension = conf.getOriginalDocsExtension();
-				int codeLen;
-				int extLen;
-				if (i == 0) {
-					strCode = conf.getWiredDrawingCode();
-				} else if (i == 1) {
-					strCode = conf.getWiredDatasheetCode();
-				} else if (i == 2) {
-					strCode = conf.getCablelessDrawingCode();
-				} else {
-					strCode = conf.getCablelessDatasheetCode();
+		for (File projectFolder : searchFolders) {
+			if (projectFolder.exists()) {
+				// lista os arquivos da pasta do projeto
+				fList = projectFolder.listFiles();
+	
+				// itera para selecionar cada um dos tipos de relatório utilizados
+				for (BaseCheckReport b : conf.getBaseCheckReports()) {
+					String strCode;
+					String strExtension = conf.getOriginalDocsExtension();
+					int codeLen;
+					int extLen;
+					strCode = b.getCode();
+					codeLen = strCode.length();
+					extLen = strExtension.length();
+					
+					for (File f : fList) {
+						String sWork = fileHandled(drawing, strCode, codeLen, extLen, strExtension, f);
+						if(sWork != null)
+							logger.warn(sWork);
+					}
 				}
-				codeLen = strCode.length();
-				extLen = strExtension.length();
-				for (File f : fList) {
-					String sWork = fileHandled(drawing, strCode, codeLen, extLen, strExtension, f);
-					if(sWork != null)
-						logger.warn(sWork);
-				}
+			} else {
+				logger.warn("This project's folder (" + projectFolder + ") wasn't found at the server!");
 			}
-		} else {
-			logger.warn("This project's folder (" + projectFolder + ") wasn't found at the server!");
 		}
 	}
 
@@ -135,7 +135,7 @@ public class ReportHelper {
 					.filter(r -> r instanceof CheckReport && r != null)
 					.map(r -> (CheckReport) r)
 					.filter(r -> r.getFileName().toLowerCase().equals(f.getName().toLowerCase()))
-					.filter(r -> r.getPagesCount() == 0)
+					.filter(r -> r.getPagesCount() > 0)
 					.findFirst()
 					.orElse(null);
 			boolean mustAdd = false;
@@ -146,10 +146,10 @@ public class ReportHelper {
 			int pagesCount = (new PdfHandler()).getPagesCount(f.getPath());
 			if (pagesCount == 0) {
 				logger.warn("A report pdf file is invalid or corrupted (" + f.getName() + ")");
-			} else {
-				for (int j = 0; j < pagesCount; j++) {
-					report.addBlankPage();
-					report.getPages().get(report.getPagesCount() - 1).setParent(report);
+			} else if (report.getPages().size() != pagesCount) {
+				int missing =  Math.abs(pagesCount - report.getPages().size());
+				for (int j = 0; j < missing; j++) {
+					report.addBlankPage().setParent(report);
 				}
 			}
 			report.setReference(strCode);
@@ -184,10 +184,32 @@ public class ReportHelper {
 		}
 		return cnt;
 	}
-
-	public String getReportFileLocation(Map<String, String> mapValues) {
+	
+	public String getCommonPathLocation(Map<String, String> mapValues) {
+		
 		ParamConfigurations conf = rep.getDefaultConfig();
 		AppConstants appConstants = FactoryAppConstants.getAppConstants();
-		return conf.getServerPath() + conf.getRootPath() + mapValues.get(appConstants.getTECHNICAL_PATH_KEY());
+		String ret;
+		ret = conf.getServerPath() + conf.getRootPath() + mapValues.get(appConstants.getCOMMON_PATH_KEY());
+		return ret;
+	}
+
+	
+	public String getConstructionPathLocation(Map<String, String> mapValues) {
+		
+		ParamConfigurations conf = rep.getDefaultConfig();
+		AppConstants appConstants = FactoryAppConstants.getAppConstants();
+		String ret;
+		ret = conf.getServerPath() + conf.getRootPath() + mapValues.get(appConstants.getCONSTRUCTION_PATH_KEY());
+		return ret;
+	}
+
+	public String getTechnicalPathLocation(Map<String, String> mapValues) {
+		
+		ParamConfigurations conf = rep.getDefaultConfig();
+		AppConstants appConstants = FactoryAppConstants.getAppConstants();
+		String ret;
+		ret = conf.getServerPath() + conf.getRootPath() + mapValues.get(appConstants.getTECHNICAL_PATH_KEY());
+		return ret;
 	}
 }

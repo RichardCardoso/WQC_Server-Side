@@ -80,7 +80,7 @@ public class WebFaccade {
 	// JSP METHODS - BEGIN
 	// -----------------------------------------------------------------------------------------------
 
-	@RequestMapping(value = { "/" })
+	@RequestMapping(value = { "" })
 	public ModelAndView index(@ModelAttribute(value = "message") String message) {
 		ModelAndView mv = new ModelAndView("main");
 		mv.addObject("message", message);
@@ -110,7 +110,7 @@ public class WebFaccade {
 
 		return modelAndView;
 	}
-
+	
 	@GetMapping(value = { "/reports" })
 	public ModelAndView reportsList(@RequestParam(value = "parentid") Long drawingrefId, @RequestParam(value = "projectid") Long projectid) {
 		
@@ -148,67 +148,18 @@ public class WebFaccade {
 			return new ResponseEntity<byte[]>(dto.getContent(), headers, HttpStatus.OK);
 		} else {
 			ErrorResult err = new ErrorResult(ErrorCode.FILE_PREVIEW_FAILED, "Unable to show this document at this moment. Please try again later.", ErrorLevel.WARNING, getClass());
-			throw new WebException(err, "/reports");
+			throw new WebException(err, "/web/reports");
 		}
 	}
-	
-	@ExceptionHandler(WebException.class)
-	public ModelAndView handleWebError(final WebException e) {
-		ErrorResult err;
-		ModelAndView errMv;
 		
-		err = e.getErr();
-		errMv = new ModelAndView("errorPage");
-		errMv.addObject("code", err.getCode());
-		errMv.addObject("message", err.getDescription());
-		errMv.addObject("redirectPath", e.getPathToRedirect());
-		
-		return errMv;
-	}
-
-	@GetMapping(value = "/settings/")
-	public ModelAndView settings() {
-		ModelAndView modelAndView;
-		
-		ParamConfigurations conf = configRep.getDefaultConfig();
-
-		modelAndView = new ModelAndView("setting");
-		modelAndView.addObject("ParamConfigurations", conf);
-		return modelAndView;
-	}
-
-	@PostMapping(value = "/settings/")
-	public ModelAndView settings(@RequestParam(value = "operation") String operation,
-			@Validated @ModelAttribute("ParamConfigurations") ParamConfigurations paramConfigurations, RedirectAttributes attr) {
-
-		ModelAndView mv = new ModelAndView("setting");
-		
-		mv.addObject("ParamConfigurations", paramConfigurations);
-
-		if (operation.toLowerCase().equals("save")) {
-			AbstractResult res = entityService.postEntity(paramConfigurations, null, paramConfigurations.getClass().getSimpleName(), null);
-			if (res instanceof ErrorResult) {
-				ErrorResult err = ResultService.getErrorResult(res);
-				String message = err.getCode().concat(" - ").concat(err.getDescription());
-				attr.addFlashAttribute("message", message);
-			} else {
-				attr.addFlashAttribute("message", "Changes saved!");
-			}
-		} else {
-			attr.addFlashAttribute("message", "Operation cancelled!");
-		}
-		mv = new ModelAndView("redirect:/web/");
-		return mv;
-	}
-
-	@GetMapping(value = "/devices/")
+	@GetMapping(value = "/devices")
 	public ModelAndView devicesGet(@RequestParam(value = "operation", required = false) String operation,
 			@RequestParam(value = "deviceid", required = false) String deviceid, @ModelAttribute(value = "message") String message) {
 
 		Map<String, String> pages = new HashMap<String, String>();
 		// pages.put("add", "device");
 		pages.put("edit", "device");
-		pages.put("back", "redirect:/web/");
+		pages.put("back", "redirect:/web");
 
 		ModelAndView modelAndView = null;
 
@@ -231,23 +182,7 @@ public class WebFaccade {
 		return modelAndView;
 	}
 	
-	@ModelAttribute("Device")
-	private Device getDevice(HttpServletRequest request) {
-		Device device = new Device();
-		
-		String[] roles = request.getParameterValues("roles");
-		
-		if(roles != null) {
-			for(String role : roles) {
-				Role r = roleRep.getByDescription(role);
-				device.getRoles().add(r);
-			}
-		}
-		
-		return device;
-	}
-
-	@PostMapping(value = "/devices/")
+	@PostMapping(value = "/devices")
 	public ModelAndView devicesPost(@RequestParam(value = "operation") String operation,
 			@Validated @ModelAttribute(value = "Device") Device device, BindingResult result, RedirectAttributes attr) {
 
@@ -255,7 +190,7 @@ public class WebFaccade {
 			return new ModelAndView("main");
 		}
 
-		ModelAndView modelAndView = new ModelAndView("redirect:../devices/");;
+		ModelAndView modelAndView = new ModelAndView("redirect:../web/devices");;
 
 		if (operation.toLowerCase().equals("save")) {
 			String message = null;
@@ -277,7 +212,7 @@ public class WebFaccade {
 			}
 			if (message != null) {
 				attr.addFlashAttribute("message", message);
-				modelAndView = new ModelAndView("redirect:../devices/?operation=edit&deviceid=" + device.getDeviceid());
+				modelAndView = new ModelAndView("redirect:../web/devices?operation=edit&deviceid=" + device.getDeviceid());
 				return modelAndView;
 			} else {
 				attr.addFlashAttribute("message", "Changes saved!");
@@ -286,6 +221,36 @@ public class WebFaccade {
 			attr.addFlashAttribute("message", "Operation cancelled!");
 		}
 		return modelAndView;
+	}
+	
+	@ExceptionHandler(WebException.class)
+	public ModelAndView handleWebError(final WebException e) {
+		ErrorResult err;
+		ModelAndView errMv;
+		
+		err = e.getErr();
+		errMv = new ModelAndView("errorPage");
+		errMv.addObject("code", err.getCode());
+		errMv.addObject("message", err.getDescription());
+		errMv.addObject("redirectPath", e.getPathToRedirect());
+		
+		return errMv;
+	}
+	
+	@ModelAttribute("Device")
+	private Device getDevice(HttpServletRequest request) {
+		Device device = new Device();
+		
+		String[] roles = request.getParameterValues("roles");
+		
+		if(roles != null) {
+			for(String role : roles) {
+				Role r = roleRep.getByDescription(role);
+				device.getRoles().add(r);
+			}
+		}
+		
+		return device;
 	}
 
 	// JSP METHODS - END

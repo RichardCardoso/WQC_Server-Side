@@ -5,8 +5,6 @@ import java.util.List;
 import javax.persistence.Entity;
 import javax.persistence.OneToMany;
 
-import com.richard.weger.wqc.domain.ParentAwareEntity;
-
 @Entity
 public class ItemReportModel extends AReportModel {
 	
@@ -20,17 +18,6 @@ public class ItemReportModel extends AReportModel {
 	public void setItems(List<ItemModel> items) {
 		this.items = items;
 	}
-
-	@Override
-	public <T extends ParentAwareEntity> List<T> getChildren() {
-		return (List<T>) getItems();
-	}
-
-	@Override
-	public <T extends ParentAwareEntity> void setChildren(List<T> children) {
-		setItems((List<ItemModel>) children);
-	}
-
 
 }
 

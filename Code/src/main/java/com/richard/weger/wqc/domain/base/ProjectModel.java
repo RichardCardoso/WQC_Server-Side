@@ -7,17 +7,18 @@ import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 
-import com.richard.weger.wqc.domain.ParentAwareEntity;
+import com.richard.weger.wqc.domain.AuditableEntity;
+import com.richard.weger.wqc.domain.Language;
 
-@Entity
-public class ProjectModel extends ParentAwareEntity {
+@Entity 
+public class ProjectModel extends AuditableEntity {
 
 	private String reference;
 	
 	@ManyToOne
 	private Language language;
 	
-	@OneToMany(cascade=CascadeType.ALL, mappedBy = "parent", orphanRemoval = true)
+	@OneToMany(cascade=CascadeType.ALL, orphanRemoval = true)
 	private List<AReportModel> reports;
 
 	public List<AReportModel> getReports() {
@@ -42,16 +43,6 @@ public class ProjectModel extends ParentAwareEntity {
 
 	public void setReference(String reference) {
 		this.reference = reference;
-	}
-
-	@Override
-	public <T extends ParentAwareEntity> List<T> getChildren() {
-		return (List<T>) getReports();
-	}
-
-	@Override
-	public <T extends ParentAwareEntity> void setChildren(List<T> children) {
-		setReports((List<AReportModel>) children);		
 	}
 		
 }

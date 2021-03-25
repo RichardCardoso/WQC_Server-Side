@@ -142,9 +142,11 @@ public class EntityService {
 			
 			eId = entity.getId();
 			
-			AbstractResult res = forceJpaRefreshForQuery(entity, parentid);
-			if(res instanceof ErrorResult) {
-				return res;
+			if (parentid != null) {
+				AbstractResult res = forceJpaRefreshForQuery(entity, parentid);
+				if(res instanceof ErrorResult) {
+					return res;
+				}
 			}
 			
 			try {

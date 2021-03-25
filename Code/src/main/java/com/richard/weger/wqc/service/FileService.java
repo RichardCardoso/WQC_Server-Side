@@ -19,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.richard.weger.wqc.appconstants.AppConstants;
 import com.richard.weger.wqc.appconstants.FactoryAppConstants;
 import com.richard.weger.wqc.domain.CheckReport;
-import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.dto.FileDTO;

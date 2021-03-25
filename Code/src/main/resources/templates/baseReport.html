@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>WQC-Server - Admin</title>
+<link
+	href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css"
+	rel="stylesheet" id="bootstrap-css">
+<script
+	src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<!------ Include the above in your HEAD tag ---------->
+</head>
+<body>
+	<div class="container">
+		<div class="row">
+			<div class="col-md-12">
+				<div class="text-center" th:if="${message}">
+					<label class="text-danger h2" th:text="${message}"></label>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<form class="form-horizontal" action="?" method="POST"	th:object="${entity}">
+				<fieldset>
+					<!-- Form Name -->
+					<legend>WQC-Server - add base report</legend>
+
+					<!-- Text input-->
+					<div class="form-group">
+						<div class="col-md-4">
+							<input class="form-control input-md" type="hidden" readonly	th:field="*{id}">
+						</div>
+					</div>
+					<!-- Text input-->
+					<div class="form-group">
+						<div class="col-md-4">
+							<input class="form-control input-md" type="hidden" readonly	th:field="*{version}">
+						</div>
+					</div>
+					<!-- Text input-->
+					<div class="form-group">
+						<label class="col-md-4 control-label" for="deviceid">Code</label>
+						<div class="col-md-4">
+							<input class="form-control input-md" type="text" th:field="*{code}">
+						</div>
+					</div>
+					<!-- Text input-->
+					<div class="form-group">
+						<label class="col-md-4 control-label" for="name">Name</label>
+						<div class="col-md-4">
+							<input class="form-control input-md" type="text" th:field="*{name}">
+						</div>
+					</div>
+				<!-- Button -->
+				<div class="form-group">
+					<div class="col-md-4 text-right">
+						<button type="submit" name="operation" class="btn btn-light" value="cancel">cancel</button>
+					</div>
+					<div class="col-md-4 text-right">
+						<button type="submit" name="operation" class="btn btn-primary" value="save">save</button>
+					</div>
+				</div>
+				</fieldset>
+			</form>
+		</div>
+	</div>
+</body>
+</html>

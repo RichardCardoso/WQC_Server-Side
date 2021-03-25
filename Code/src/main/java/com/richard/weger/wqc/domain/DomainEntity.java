@@ -16,6 +16,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 
+import lombok.Data;
+
 @SuppressWarnings("serial")
 @Entity
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
@@ -35,6 +37,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 	@JsonSubTypes.Type(value = Role.class, name="Role"),
 	@JsonSubTypes.Type(value = ParamConfigurations.class, name="ParamConfigurations")
 })
+@Data
 public abstract class DomainEntity implements Serializable {
 	
 	public DomainEntity() {
@@ -44,7 +47,7 @@ public abstract class DomainEntity implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	@TableGenerator(name="entity_gen", initialValue = 1)
-	private Long id;
+	private Long id = 0L;
 	
 	@Version
 	private Long version = 0L;

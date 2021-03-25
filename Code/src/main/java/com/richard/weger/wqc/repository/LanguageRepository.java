@@ -1,6 +1,6 @@
 package com.richard.weger.wqc.repository;
 
-import com.richard.weger.wqc.domain.base.Language;
+import com.richard.weger.wqc.domain.Language;
 
 public interface LanguageRepository extends IRepository<Language> {
 	

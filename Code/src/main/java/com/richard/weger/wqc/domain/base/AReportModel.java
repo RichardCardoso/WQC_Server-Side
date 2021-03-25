@@ -6,24 +6,21 @@ import java.util.List;
 import javax.persistence.Entity;
 import javax.persistence.OneToMany;
 
-import com.richard.weger.wqc.domain.ParentAwareEntity;
+import com.richard.weger.wqc.domain.AuditableEntity;
+import com.richard.weger.wqc.domain.Translation;
 
 @Entity
-public abstract class AReportModel extends ParentAwareEntity {
+public abstract class AReportModel extends AuditableEntity {
 
 	@OneToMany
-	private List<LocalizedDescription> descriptions = new ArrayList<>();
+	private List<Translation> descriptions = new ArrayList<>();
 
-	public List<LocalizedDescription> getDescriptions() {
+	public List<Translation> getDescriptions() {
 		return descriptions;
 	}
 
-	public void setDescriptions(List<LocalizedDescription> descriptions) {
+	public void setDescriptions(List<Translation> descriptions) {
 		this.descriptions = descriptions;
-	}
-
-	public AReportModel() {
-		setParent(new ProjectModel());
 	}
 
 }

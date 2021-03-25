@@ -67,10 +67,12 @@ public class CheckReport extends Report {
 	}
 	
 	@JsonIgnore
-	public void addBlankPage() {
+	public Page addBlankPage() {
+		
 		Page p = new Page();
 		p.setNumber(getPagesCount() + 1);
 		pages.add(p);
+		return p;
 	}
 	
 	@JsonIgnore

@@ -1,6 +1,5 @@
 package com.richard.weger.wqc.domain.base.unused;
 
-import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;

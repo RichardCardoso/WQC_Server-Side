@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.richard.weger.wqc.appconstants.AppConstants;
 import com.richard.weger.wqc.appconstants.FactoryAppConstants;
+import com.richard.weger.wqc.domain.BaseCheckReport;
 import com.richard.weger.wqc.domain.CheckReport;
 import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.ItemReport;
@@ -82,20 +83,12 @@ public class ReportService {
 			fList = projectFolder.listFiles();
 
 			// itera para selecionar cada um dos tipos de relatório utilizados
-			for (int i = 0; i <= 3; i++) {
+			for (BaseCheckReport b : conf.getBaseCheckReports()) {
 				String strCode;
 				String strExtension = conf.getOriginalDocsExtension();
 				int codeLen;
 				int extLen;
-				if (i == 0) {
-					strCode = conf.getWiredDrawingCode();
-				} else if (i == 1) {
-					strCode = conf.getWiredDatasheetCode();
-				} else if (i == 2) {
-					strCode = conf.getCablelessDrawingCode();
-				} else {
-					strCode = conf.getCablelessDatasheetCode();
-				}
+				strCode = b.getCode();
 				codeLen = strCode.length();
 				extLen = strExtension.length();
 				for (File f : fList) {

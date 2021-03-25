@@ -10,9 +10,10 @@
 <script
 	src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
 <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<script th:src="@{'/js/myscripts.js'}"></script>
 <!------ Include the above in your HEAD tag ---------->
 </head>
-<body>
+<body onload="init()">
 	<div class="container">
 		<div class="row">
 			<form class="form-horizontal" action="./" method="POST"
@@ -49,46 +50,6 @@
 							<input 
 								placeholder="0000" class="form-control input-md" type="text"
 								th:field="*{controlCardReportCode}">
-						</div>
-					</div>
-					<!-- Text input-->
-					<div class="form-group">
-						<label class="col-md-4 control-label"
-							for="constructionDrawingCode">Drawing code for wired machine</label>
-						<div class="col-md-4">
-							<input placeholder="5032"
-								class="form-control input-md" type="text"
-								th:field="*{wiredDrawingCode}">
-						</div>
-					</div>
-					<!-- Text input-->
-					<div class="form-group">
-						<label class="col-md-4 control-label" for="datasheetCode">Datasheet
-							code for wired machine</label>
-						<div class="col-md-4">
-							<input placeholder="5033"
-								class="form-control input-md" type="text"
-								th:field="*{wiredDatasheetCode}">
-						</div>
-					</div>
-					<!-- Text input-->
-					<div class="form-group">
-						<label class="col-md-4 control-label"
-							for="constructionDrawingCode">Drawing code for cableless machine</label>
-						<div class="col-md-4">
-							<input placeholder="5032"
-								class="form-control input-md" type="text"
-								th:field="*{cablelessDrawingCode}">
-						</div>
-					</div>
-					<!-- Text input-->
-					<div class="form-group">
-						<label class="col-md-4 control-label" for="datasheetCode">Datasheet
-							code for cableless machine</label>
-						<div class="col-md-4">
-							<input placeholder="5033"
-								class="form-control input-md" type="text"
-								th:field="*{cablelessDatasheetCode}">
 						</div>
 					</div>
 					<!-- Text input-->
@@ -186,6 +147,65 @@
 
 				</fieldset>
 			</form>
+			<hr>
+			<div class="row">
+				<div class="col-md-3"></div>
+				<div class="col-md-6">
+					<div class="row">
+						<div class="col-md-12">
+							<h3 class="modal-title pull-left">Document codes</h3>
+							<div class="pull-right" style="display:none;">
+								<form method="GET" th:action="${'./settings/baseReports'}">
+									<button type="submit" name="operation" value="add" class="btn btn-success">add</button>
+								</form>
+							</div>
+						</div>
+					</div>
+					<div th:unless="${baseReports?.size() > 0}" class="w-100 text-center">
+						<span class="h5">No items to show</span>
+					</div>
+					<p></p>
+					<div class="row">
+						<div class="col-md-12">
+							<table class="table table-bordered pt-3 " th:if="${baseReports?.size() > 0}">
+								<thead>
+									<tr>
+										<th scope="col">Code</th>
+										<th scope="col">Translations</th>
+										<th scope="col"></th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr th:each="b : ${ParamConfigurations.baseCheckReports}">
+										<td>
+											<span th:text="${b.code}"></span>
+										</td>
+										<td>
+											<div th:each="t : ${b.translatableString?.translations}">
+												<label th:text="${t.language.reference}"></label>
+												<label th:text="${': ' + t.value}"></label>
+											</div>
+										</td>
+										<td>
+											<div style="display:none;">
+												<div class="d-inline">
+													<form action="./settings/baseReports" method="POST" class="deleteForm">
+														<input type="hidden" name="id" th:value="${b.id}" readonly>
+														<button type="submit" name="operation" class="btn btn-danger" value="delete">
+															delete
+														</button>
+													</form>
+												</div>
+											</div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+					<hr>
+				</div>
+			</div>
 		</div>
 	</div>
 </body>

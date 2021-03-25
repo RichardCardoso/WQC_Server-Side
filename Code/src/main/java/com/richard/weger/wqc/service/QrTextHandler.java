@@ -42,7 +42,7 @@ public class QrTextHandler {
 		ParamConfigurations conf = rep.getDefaultConfig();
 		AppConstants appconst = FactoryAppConstants.getAppConstants();
 		Map<String, String> mapValues = new HashMap<>();
-		String sWork, sPartNumber, sDrawNumber;
+		String sWork, sDrawNumber;
 		File fWork;
 		
 		qrText = qrText.replace("\\", "").replace("/", "");
@@ -75,7 +75,7 @@ public class QrTextHandler {
 			fWork = new File(sWork);
 
 			a = qrText.indexOf('T');
-			sPartNumber = String.format("%02d", Integer.valueOf(qrText.substring(a + 2, qrText.length())));
+//			sPartNumber = String.format("%02d", Integer.valueOf(qrText.substring(a + 2, qrText.length())));
 			b = qrText.indexOf('Z');
 			sDrawNumber = String.format("%02d", Integer.valueOf(qrText.substring(b + 2, a - 1)));
 			

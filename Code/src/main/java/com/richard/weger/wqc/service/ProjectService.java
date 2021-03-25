@@ -80,7 +80,7 @@ public class ProjectService {
 			
 			// Reports handling - begin
 			boolean saveResult = false;
-			if(helper.handleReports(project.getDrawingRefs().get(0), mapValues, false)) {
+			if(helper.handleReports(project.getDrawingRefs().get(0), mapValues, true)) {
 				project = projectRep.save(project);
 				saveResult = project != null;
 			} else {
