@@ -13,7 +13,7 @@ IDE: Eclipse
 
 # Updated .war file
 
-Please refer to the 'Deploy\Release' folder in order to get the last version of the .war file
+Please refer to the 'Deploy' folder in order to get the last version of the .war file
 
 # Required softwares for production server
 Apache Tomcat 8.0.53 Server (Download core binary distribution): https://tomcat.apache.org/download-80.cgi  
