@@ -11,6 +11,8 @@ import lombok.Data;
 @Data @Entity
 public class TranslatableString extends AuditableEntity {
 
+	private boolean locked;
+	
 	private String code;
 	
 	@OneToMany

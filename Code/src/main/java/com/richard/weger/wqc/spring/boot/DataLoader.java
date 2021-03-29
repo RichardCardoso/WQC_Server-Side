@@ -157,14 +157,24 @@ public class DataLoader implements CommandLineRunner {
 		}
 		
 		for (Entry<String, List<Translation>> e : repsMap.entrySet()) {
+			List<TranslatableString> strs = translationRep.getByCode("report_description_" + e.getKey());
+			for (TranslatableString str : strs) {
+				str.getTranslations().forEach(x -> domainRep.delete(x));
+				str.getTranslations().clear();
+				domainRep.delete(str);
+			}
+		}
+			
+		
+		for (Entry<String, List<Translation>> e : repsMap.entrySet()) {
 			TranslatableString str = new TranslatableString();
 			str.setCode("report_description_" + e.getKey());
 			domainRep.save(str);
 		}
-		
+				
 		for (Entry<String, List<Translation>> e : repsMap.entrySet()) {
 			BaseCheckReport r = baseReportRep.getByCode(e.getKey());
-			TranslatableString str = translationRep.getByCode("report_description_" + e.getKey());
+			TranslatableString str = translationRep.getByCode("report_description_" + e.getKey()).get(0);
 			str.getTranslations().addAll(e.getValue());
 			r.setTranslatableString(str);
 			domainRep.save(str);
