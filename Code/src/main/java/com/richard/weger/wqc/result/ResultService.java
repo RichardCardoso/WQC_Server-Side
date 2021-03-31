@@ -7,20 +7,18 @@ import org.springframework.http.HttpHeaders;
 @SuppressWarnings("unchecked")
 public class ResultService {
 	
-	public static <T> SingleObjectResult<T> getSingleResultContainer(AbstractResult res, Class<T> clz) {
+	public static <T> SingleObjectResult<T> getSingleResultContainer(AbstractResult res) {
 		SingleObjectResult<T> ret = null;
 		if(res instanceof SingleObjectResult) {
 			SingleObjectResult<?> rTest = (SingleObjectResult<?>) res;
-			if(rTest.getContentClz().isAssignableFrom(clz)) {
-				ret = (SingleObjectResult<T>) res;
-			}
+			ret = (SingleObjectResult<T>) res;
 		}
 		return ret;
 	}
 	
-	public static <T> T getSingleResult(AbstractResult res, Class<T> clz) {
+	public static <T> T getSingleResult(AbstractResult res) {
 		T ret = null;
-		SingleObjectResult<T> rWork = getSingleResultContainer(res, clz);
+		SingleObjectResult<T> rWork = getSingleResultContainer(res);
 		if(rWork != null) {
 			ret = rWork.getObject();
 		}

@@ -93,8 +93,11 @@ public class WebFaccade {
 		ModelAndView modelAndView;
 		
 		List<Project> projects = projectRep.findAll();
+		
+		boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
 
 		modelAndView = new ModelAndView("projects").addObject("projects", projects);
+		modelAndView.addObject("isDebug", isDebug);
 
 		return modelAndView;
 	}
@@ -137,7 +140,7 @@ public class WebFaccade {
 			ReportExportDTO dto;
 			HttpHeaders headers;
 			
-			dto = ResultService.getSingleResult(res, ReportExportDTO.class);
+			dto = ResultService.getSingleResult(res);
 			
 			headers = new HttpHeaders();
 			headers.setExpires(-1);
@@ -204,7 +207,7 @@ public class WebFaccade {
 			} else if (devices.size() > 0 && devices.stream().filter(d -> d.getName() != null).anyMatch(d -> d.getName().equals(device.getName()) && d.getId() != device.getId())) {
 				message = "Device name should be unique!";
 			} else {
-				AbstractResult res = entityService.postEntity(device, null, device.getClass().getSimpleName(), null);
+				AbstractResult res = entityService.postEntity(device, null, device.getClass().getSimpleName(), null, null);
 				if(res instanceof ErrorResult) {
 					ErrorResult err = ResultService.getErrorResult(res);
 					message = err.getCode().concat(" - ").concat(err.getDescription());

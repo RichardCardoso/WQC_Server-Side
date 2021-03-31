@@ -1,6 +1,7 @@
 package com.richard.weger.wqc.service;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -26,15 +27,23 @@ import com.google.gson.ExclusionStrategy;
 import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.richard.weger.wqc.domain.CheckReport;
 import com.richard.weger.wqc.domain.Device;
 import com.richard.weger.wqc.domain.DomainEntity;
+import com.richard.weger.wqc.domain.Item;
+import com.richard.weger.wqc.domain.ItemReport;
+import com.richard.weger.wqc.domain.Mark;
+import com.richard.weger.wqc.domain.Page;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.ParentAwareEntity;
 import com.richard.weger.wqc.domain.Report;
+import com.richard.weger.wqc.domain.ReportLock;
 import com.richard.weger.wqc.helper.ProjectHelper;
 import com.richard.weger.wqc.messaging.WebSocketMessagingService;
+import com.richard.weger.wqc.repository.DeviceRepository;
 import com.richard.weger.wqc.repository.DomainEntityRepository;
 import com.richard.weger.wqc.repository.ParentAwareEntityRepository;
+import com.richard.weger.wqc.repository.ReportRepository;
 import com.richard.weger.wqc.result.AbstractResult;
 import com.richard.weger.wqc.result.EmptyResult;
 import com.richard.weger.wqc.result.ErrorResult;
@@ -50,6 +59,8 @@ public class EntityService {
 	@Value("${build.version}")
 	private String appVersion;
 	
+	@Autowired private ReportRepository reportRep;
+	@Autowired private DeviceRepository deviceRep;
 	@Autowired private DomainEntityRepository rep;
 	@Autowired private ParentAwareEntityRepository parentRep;
 	@Autowired private ExportService exportService;
@@ -124,7 +135,7 @@ public class EntityService {
 	}
 	
 	@Transactional(readOnly=false)
-	public <T extends DomainEntity> AbstractResult postEntity(T entity, Long parentid, String entityName, String qrcode) {
+	public <T extends DomainEntity> AbstractResult postEntity(T entity, Long parentid, String entityName, String qrcode, String deviceid) {
 		
 		try {
 			Long eId;
@@ -142,14 +153,17 @@ public class EntityService {
 			
 			eId = entity.getId();
 			
-			if (parentid != null) {
+			if (parent == null) {
 				AbstractResult res = forceJpaRefreshForQuery(entity, parentid);
 				if(res instanceof ErrorResult) {
 					return res;
 				}
+			} else {
+				((ParentAwareEntity) entity).getParent(DomainEntity.class).setId(parent.getId());
 			}
 			
 			try {
+				lockValidation(entity, deviceid);
 				entity = rep.save(entity);
 			} catch (Exception ex) {
 				ErrorResult errRes;
@@ -176,7 +190,9 @@ public class EntityService {
 				shouldSendUpdateNotice = !(entity instanceof ParamConfigurations || entity instanceof Device);
 				if(entity instanceof Report) {
 					Report r = (Report) entity;
-					exportService.export(r);
+					if (r.isFinished()) {
+						exportService.export(r);
+					}
 				} 
 				if (shouldSendUpdateNotice) {
 					if(!Strings.isEmpty(qrcode)) {
@@ -207,6 +223,29 @@ public class EntityService {
 			return new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
 		}
 		
+	}
+	
+	private void lockValidation(DomainEntity e, String deviceId) throws Exception {
+		
+		Report parent = null;
+		if (e instanceof Mark) {
+			Mark m = (Mark) e;
+			Page p = (Page) rep.getById(m.getParent(DomainEntity.class).getId());
+			parent = p.getParent(CheckReport.class);
+		} else if (e instanceof Item) {
+			Item i = (Item) e;
+			parent = i.getParent(ItemReport.class);
+		} else if (e instanceof Report) {
+			parent = (Report) e;
+		}
+		if (parent != null && deviceId != null) {
+			Report r = (Report) rep.getById(parent.getId());
+			if (r.getLock() != null) {
+				checkAllowed(r.getLock(), deviceRep.getByDeviceid(deviceId));
+			}
+		} else if (parent != null) {
+			throw new Exception("");
+		}
 	}
 	
 	private <T extends DomainEntity> AbstractResult forceJpaRefreshForQuery(T entity, Long parentid) {
@@ -286,6 +325,94 @@ public class EntityService {
 		}
 	}
 	
+	@Transactional
+	public AbstractResult reportFinish(Long reportId, boolean finish) {
+		
+		AbstractResult res;
+		
+		Report r = reportRep.getById(reportId);
+		
+		res = new SingleObjectResult<>(Report.class, r);
+		
+		try {
+			r.setFinished(finish);
+			if (finish) {
+				exportService.export(r);
+			}
+			rep.save(r);
+		} catch (Exception ex) {
+			res = new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, reportId + "", ErrorLevel.SEVERE, getClass());
+		}
+		
+		return res;
+	}
+	
+	@Transactional
+	public AbstractResult reportLock(Long reportId, String deviceId, boolean lock) {
+		
+		AbstractResult res;
+		
+		Report r = reportRep.getById(reportId);
+		Device d = deviceRep.getByDeviceid(deviceId);
+		
+		res = new SingleObjectResult<>(Report.class, r);
+		
+		if (lock) {
+			try {
+				lock(r, d);
+			} catch (Exception ex) {
+				res = new ErrorResult(ErrorCode.REPORT_LOCK_FAILED, deviceId, ErrorLevel.SEVERE, getClass());
+			}
+		} else {
+			try {
+				unlock(r, d);
+			} catch (Exception ex) {
+				res = new ErrorResult(ErrorCode.REPORT_UNLOCK_FAILED, deviceId, ErrorLevel.SEVERE, getClass());
+			}
+		}
+		
+		return res;
+	}
+	
+	private void lock(Report r, Device d) throws Exception {
+		
+		ReportLock l;
+		l = r.getLock();
+		if (l != null) {
+			checkAllowed(l, d);
+			rep.delete(l);
+		}
+		l = new ReportLock();
+		l.setDevice(d);
+		l.setLastPing(new Date());
+		r.setLock(l);
+		rep.save(r);
+	}
+	
+	private void unlock(Report r, Device d) throws Exception {
+		
+		ReportLock l;
+		l = r.getLock();
+		if (l != null) {
+			checkAllowed(l, d);
+			rep.delete(l);
+			r.setLock(null);
+			rep.save(r);
+		}
+	}
+	
+	private void checkAllowed(ReportLock l, Device d) throws Exception {
+		
+		if (!l.getDevice().getDeviceid().equals(d.getDeviceid())) {
+			Date now = new Date();
+			Date lastPing = l.getLastPing();
+			long diff = (now.getTime() - lastPing.getTime()) / 1000;
+			if (Math.abs(diff) < 10) {
+				throw new Exception();
+			}
+		}
+	}
+	
 	private void setParentString(ParentAwareEntity parent, ParentAwareEntity child) {
 		
 		GsonBuilder builder = new GsonBuilder().addSerializationExclusionStrategy(serializationExclusionStrategy);
@@ -310,6 +437,17 @@ public class EntityService {
 		    return false;
 		  }
 		};
+		
+	@SuppressWarnings("unchecked")
+	public <T> ResponseEntity<T> objectlessSuccessReturn(AbstractResult res) {
+		
+		if (res instanceof SingleObjectResult) {
+			SingleObjectResult<T> r = (SingleObjectResult<T>) res;
+			return ResponseEntity.status(HttpStatus.OK).body(r.getObject());
+		} else {
+			return objectlessReturn(res);
+		}
+	}
 		
 	public <T> ResponseEntity<T> objectlessReturn(AbstractResult res) {
 		 if (res instanceof ErrorResult) {

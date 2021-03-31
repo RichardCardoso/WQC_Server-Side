@@ -28,6 +28,7 @@ import com.richard.weger.wqc.domain.CheckReport;
 import com.richard.weger.wqc.domain.Mark;
 import com.richard.weger.wqc.domain.Page;
 import com.richard.weger.wqc.domain.ParamConfigurations;
+import com.richard.weger.wqc.repository.DomainEntityRepository;
 import com.richard.weger.wqc.repository.ParamConfigurationsRepository;
 import com.richard.weger.wqc.service.QrTextHandler;
 
@@ -35,6 +36,7 @@ import com.richard.weger.wqc.service.QrTextHandler;
 @Service
 public class CheckReportHelper {
 	
+	@Autowired private DomainEntityRepository domainRep;
 	@Autowired private ParamConfigurationsRepository rep;
 	@Autowired private QrTextHandler handler;
 
@@ -46,14 +48,41 @@ public class CheckReportHelper {
     public static final PdfNumber LANDSCAPE = new PdfNumber(90);
     public static final PdfNumber PORTRAIT = new PdfNumber(0);
     public static final PdfNumber SEASCAPE = new PdfNumber(270);
+    
+    private File findParentFolder(String filename, ParamConfigurations conf, Map<String, String> mapValues) {
+    	
+    	File root = new File(conf.getServerPath().concat(conf.getRootPath())
+				.concat(mapValues.get(consts.getCOMMON_PATH_KEY())));
+    	return findParentFolder(root, filename);
+    }
+    
+    private File findParentFolder(File curr, String filename) {
+    	
+    	File ret = null;
+    	if (curr.isDirectory()) {
+    		File[] files = curr.listFiles();
+    		for (File f : files) {
+    			ret = findParentFolder(f, filename);
+    			if (ret != null) {
+    				return ret;
+    			}
+    		}
+    	} else {
+    		if (curr.getName().startsWith(filename)) {
+    			return new File(curr.getParentFile().getAbsolutePath());
+    		}
+    	}
+    	return ret;
+    }
 
 	public String bitmap2Pdf(CheckReport report) {
+    	    	
 		ParamConfigurations conf = rep.getDefaultConfig();
 		
 		Map<String, String> mapValues = handler.getParameters(report.getParent().getParent());
 
-		String originalFilePath = conf.getServerPath().concat(conf.getRootPath())
-				.concat(mapValues.get(consts.getTECHNICAL_PATH_KEY())).concat(report.getFileName());
+		File originalFileParentPath = findParentFolder(report.getFileName(), conf, mapValues);
+		String originalFilePath = originalFileParentPath.getAbsolutePath().concat(File.separator).concat(report.getFileName());
 		String destinyFilePath = conf.getServerPath().concat(conf.getRootPath())
 				.concat(mapValues.get(consts.getCOMMON_PATH_KEY())).concat("/Technik/Qualitaetskontrolle/")
 				.concat(report.getFileName().replaceAll(".pdf", "-Q".concat(".pdf")));
@@ -110,7 +139,7 @@ public class CheckReportHelper {
 					canvas.fill();
 					
 					doc.showTextAligned(new Paragraph(text).setFontColor(ColorConstants.YELLOW).setFont(font).setFontSize(radius), 
-							(float) x, (float) y, i, TextAlignment.CENTER, VerticalAlignment.MIDDLE, (float) (angle * (Math.PI / 180)));
+							(float) x, (float) y, j + 1, TextAlignment.CENTER, VerticalAlignment.MIDDLE, (float) (angle * (Math.PI / 180)));
 										
 					if(rotate != null && rotate.getValue() > 0) {
 						pdfPage.setRotation((int)rotate.getValue());

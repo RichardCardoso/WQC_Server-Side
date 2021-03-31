@@ -88,7 +88,7 @@ public class FileService {
 		if(targetFileResult instanceof ErrorResult) {
 			return targetFileResult;
 		} else {
-			targetFile = ResultService.getSingleResult(targetFileResult, File.class);
+			targetFile = ResultService.getSingleResult(targetFileResult);
 		}
 
 		String superFolder;
@@ -119,7 +119,7 @@ public class FileService {
 				if(targetFileResult instanceof ErrorResult) {
 					return targetFileResult;
 				} else {
-					targetFile = ResultService.getSingleResult(targetFileResult, File.class);
+					targetFile = ResultService.getSingleResult(targetFileResult);
 				}
 			}
 		} while (!saved);
@@ -215,7 +215,7 @@ public class FileService {
 		
 		if(res instanceof SuccessResult) {
 	
-			p = ResultService.getSingleResult(res, Project.class);
+			p = ResultService.getSingleResult(res);
 			if(p != null) {
 				List<String> targets = p.getDrawingRefs().stream()
 						.flatMap(d -> d.getReports().stream()

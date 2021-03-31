@@ -31,6 +31,7 @@
 					<tr>
 						<th scope="col">Project number</th>
 						<th scope="col">Drawings scanned</th>
+						<th scope="col" th:if="${isDebug}"></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -39,6 +40,13 @@
 							<a th:text="${project.reference}" th:href="@{/web/drawings?parentid=} + ${project.id}"></a>
 						</td>
 						<td th:text="${project.drawingRefs.size()}" scope="col"></td>
+						<td th:if="${isDebug}">
+							<form th:action="@{/rest/project/delete}" method="POST">
+								<input type="hidden" th:value="${project.id}" name="id">
+								<input type="hidden" th:value="${project.version}" name="version">
+								<button type="submit" class="btn btn-danger">delete</button>
+							</form>
+						</td>
 					</tr>
 				</tbody>
 			</table>

@@ -1,5 +1,7 @@
 package com.richard.weger.wqc.spring.jpa;
 
+import java.util.Optional;
+
 import javax.sql.DataSource;
 
 import org.apache.log4j.Logger;
@@ -7,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 
@@ -20,6 +23,12 @@ public class JpaSetup {
 	
 	public JpaSetup() {
 		logger = Logger.getLogger(getClass());
+	}
+	
+	@Bean
+	public AuditorAware<String> auditorProvider() {
+		
+		return () -> Optional.ofNullable("SYSTEM");
 	}
 	
 	@Bean

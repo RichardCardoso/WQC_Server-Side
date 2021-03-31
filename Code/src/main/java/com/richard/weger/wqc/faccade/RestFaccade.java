@@ -2,6 +2,7 @@ package com.richard.weger.wqc.faccade;
 
 import java.io.File;
 import java.net.URI;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,7 +73,7 @@ public class RestFaccade {
 		AbstractResult res = projectService.getSingle(qrCode);
 		
 		if (res instanceof ResultWithContent) {
-			Project project = ResultService.getSingleResult(res, Project.class);
+			Project project = ResultService.getSingleResult(res);
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("version", entityService.getAppVersion());
 			return new ResponseEntity<>(project, headers, HttpStatus.OK);
@@ -104,7 +104,7 @@ public class RestFaccade {
 		AbstractResult res = deviceService.getSingle(deviceid);
 		
 		if (res instanceof ResultWithContent) {
-			Device device = ResultService.getSingleResult(res, Device.class);
+			Device device = ResultService.getSingleResult(res);
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("version", entityService.getAppVersion());
 			return new ResponseEntity<>(device, headers, HttpStatus.OK);
@@ -119,7 +119,7 @@ public class RestFaccade {
 		AbstractResult res = roleService.getByDescription(roleDescription);
 
 		if (res instanceof ResultWithContent) {
-			Role role = ResultService.getSingleResult(res, Role.class);
+			Role role = ResultService.getSingleResult(res);
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("version", entityService.getAppVersion());
 			return new ResponseEntity<>(role, headers, HttpStatus.OK);
@@ -134,6 +134,7 @@ public class RestFaccade {
 			@PathVariable(value = "entity") String entityName
 			) {
 		
+		logger.info(new Date() + " => Requesting entities list");
 		AbstractResult res = entityService.entitiesList(parentid, entityName);
 		
 		if (res instanceof ResultWithContent) {
@@ -143,6 +144,7 @@ public class RestFaccade {
 			return new ResponseEntity<>(list, headers, HttpStatus.OK);
 		}
 		
+		logger.info(new Date() + " => Returning entities list");		
 		return entityService.objectListReturn(res);
 		
 	}
@@ -155,7 +157,7 @@ public class RestFaccade {
 		if(res instanceof ResultWithContent) {
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("version", entityService.getAppVersion());
-			DomainEntity e = ResultService.getSingleResult(res, DomainEntity.class);
+			DomainEntity e = ResultService.getSingleResult(res);
 			return new ResponseEntity<DomainEntity>(e, headers, HttpStatus.OK);
 		}
 		
@@ -167,19 +169,20 @@ public class RestFaccade {
 			@PathVariable(value="entity") String entityName, 
 			@RequestParam(value="parentid", required=false) Long parentid,
 			@RequestBody T entity,
-			@RequestParam(value="qrcode") String qrcode) {
+			@RequestParam(value="qrcode") String qrcode,
+			@RequestParam(value="deviceid") String deviceid) {
 		
 		AbstractResult res;
 		
 		try {
-			res = entityService.postEntity(entity, parentid, entityName, qrcode);
+			res = entityService.postEntity(entity, parentid, entityName, qrcode, deviceid);
 		} catch (ObjectOptimisticLockingFailureException ex) {
 			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
 			return entityService.objectlessReturn(err);
 		}
 		
 		if (res instanceof SuccessResult) {
-			SingleObjectResult<DomainEntity> oRes = ResultService.getSingleResultContainer(res, DomainEntity.class);
+			SingleObjectResult<DomainEntity> oRes = ResultService.getSingleResultContainer(res);
 			
 			
 			if(oRes.isUpdated()) {
@@ -196,15 +199,68 @@ public class RestFaccade {
 		
 	}
 	
-	@DeleteMapping(value = "/{entity}")
-	public ResponseEntity<DomainEntity> entityDelete(
-			@RequestParam(value="id") Long id, @RequestParam(value="version") Long version,
-			@RequestParam(value="qrcode") String qrcode) {
+	@RequestMapping(value="/reports/finish/{id}", method = {RequestMethod.POST, RequestMethod.PUT}, produces = MediaType.APPLICATION_JSON_VALUE)
+	public <T extends DomainEntity> ResponseEntity<T> reportFinish(  
+			@PathVariable(value="id") Long id, @RequestParam(value = "deviceid") String deviceid, @RequestParam(value = "finish") Boolean finish) {
+		
+		AbstractResult res;
+			
+		try {
+			res = entityService.reportFinish(id, finish);
+			if (finish) {
+				res = entityService.reportLock(id, deviceid, false);
+			}
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
+			return entityService.objectlessReturn(err);
+		}
+		
+		return entityService.objectlessSuccessReturn(res);
+	}
+	
+	@RequestMapping(value="/reports/lock/{id}", method = {RequestMethod.POST, RequestMethod.PUT}, produces = MediaType.APPLICATION_JSON_VALUE)
+	public <T extends DomainEntity> ResponseEntity<T> reportLock(  
+			@PathVariable(value="id") Long id, @RequestParam(value = "deviceid") String deviceid, @RequestParam(value = "lock") Boolean lock) {
 		
 		AbstractResult res;
 		
-		try {	
-			res = entityService.deleteEntity(id, version, qrcode);
+		try {
+			res = entityService.reportLock(id, deviceid, lock);
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
+			return entityService.objectlessReturn(err);
+		}
+		
+		if (res instanceof SingleObjectResult) {
+			SingleObjectResult<T> r = ResultService.getSingleResultContainer(res) ;
+			String clzName = r.getContentClz().getSimpleName();
+			
+			URI uri = ServletUriComponentsBuilder.fromCurrentContextPath()
+					.path("/rest/{entity}/{id}")
+					.buildAndExpand(clzName, id).toUri();
+			return ResponseEntity.created(uri).build();
+		} else {
+			return entityService.objectlessReturn(res);
+		}
+		
+		
+	}
+	
+	@PostMapping(value = "/{entity}/delete")
+	public ResponseEntity<DomainEntity> entityDelete(
+			@RequestParam(value="id") Long id, @RequestParam(value="version") Long version,
+			@RequestParam(value="qrcode", required = false) String qrcode) {
+		
+		AbstractResult res;
+		boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
+		
+		try {
+			if (isDebug) {
+				res = entityService.deleteEntity(id, version, qrcode);
+			} else {
+				ErrorResult err = new ErrorResult(ErrorCode.GENERAL_SERVER_FAILURE, "Entities can only be deleted in debug mode!", ErrorLevel.WARNING, getClass());
+				return entityService.objectlessReturn(err);
+			}
 		} catch (ObjectOptimisticLockingFailureException ex) {
 			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
 			return entityService.objectlessReturn(err);
@@ -231,7 +287,8 @@ public class RestFaccade {
 		headers.set("version", entityService.getAppVersion());
 
 		if (res instanceof SuccessResult) {
-			String newName = ResultService.getSingleResult(res, File.class).getName();
+			File f = ResultService.getSingleResult(res);
+			String newName = f.getName();
 			headers = fileService.getHeadersWithFilenames(fileName, newName);
 			headers.set("version", entityService.getAppVersion());
 			return ResponseEntity.ok().headers(headers).body(null);
@@ -273,7 +330,7 @@ public class RestFaccade {
 			return ResponseEntity.ok()
 					.headers(headers)
 					.contentType(MediaType.APPLICATION_OCTET_STREAM)
-					.body(ResultService.getSingleResult(res, ByteArrayResource.class));
+					.body(ResultService.getSingleResult(res));
 		} else {
 			headers = ResultService.getErrorHeaders(ResultService.getErrorResult(res));
 			headers.set("version", entityService.getAppVersion());
@@ -301,7 +358,7 @@ public class RestFaccade {
 			headers.set("version", entityService.getAppVersion());
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(null);
 		} else if (res instanceof SingleObjectResult) {
-			ByteArrayResource iRes = ResultService.getSingleResult(res, ByteArrayResource.class);
+			ByteArrayResource iRes = ResultService.getSingleResult(res);
 			headers.add("LastModified", fileService.getPictureLastModifiedDate(filename, qrcode).toString());
 			return ResponseEntity.ok()
 					.headers(headers)

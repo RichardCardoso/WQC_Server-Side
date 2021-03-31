@@ -1,13 +1,18 @@
 package com.richard.weger.wqc.domain;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.Lob;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
+
+import lombok.Data;
 
 @SuppressWarnings("serial")
 @Entity
 //@EntityListeners(ReportListener.class)
 @Table(name = "reports")
+@Data
 public abstract class Report extends ParentAwareEntity {
 	
 	protected Report() {
@@ -15,54 +20,18 @@ public abstract class Report extends ParentAwareEntity {
 		setParent(new DrawingRef());
 	}
 	
+	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+	private ReportLock lock;
+	
 	private String reference;
 	
 	@Lob
 	private String comments;
-	
-	public String getComments() {
-		return comments;
-	}
-
-	public void setComments(String comments) {
-		this.comments = comments;
-	}
 
 	private boolean finished;
-	
-	public boolean isFinished() {
-		return finished;
-	}
-
-	public void setFinished(boolean finished) {
-		this.finished = finished;
-	}
 
 	public DrawingRef getParent() {
 		return super.getParent(DrawingRef.class);
-	}
-
-//	public String getType() {
-//		return type;
-//	}
-//
-//	/**
-//	 * Set the report's type
-//	 * 
-//	 * @param type
-//	 *            Report's type
-//	 *            0 = none, 1 = ItemsReport, 2 = CheckReport, 3 = AutomaticReport
-//	 */
-//	public void setType(String type) {
-//		this.type = type;
-//	}
-
-	public String getReference() {
-		return reference;
-	}
-
-	public void setReference(String reference) {
-		this.reference = reference;
 	}
 
 }

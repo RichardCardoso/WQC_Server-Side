@@ -15,7 +15,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 @SpringBootApplication
 @ComponentScan//("com.richard.weger.wqc")
 @EntityScan//(basePackages = {"com.richard.weger.wqc.domain"})
-@EnableJpaAuditing
+@EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 @EnableAutoConfiguration(exclude = RepositoryRestMvcAutoConfiguration.class)
 @EnableJpaRepositories///("com.richard.weger.wqc.repository")
 @EnableAsync

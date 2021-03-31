@@ -111,13 +111,17 @@ public class ReportHelper {
 
 	private String fileHandled(DrawingRef drawing, String strCode, int codeLen, int extLen, String strExtension, File f) {
 		String sWork = null;
-		if (f.isDirectory()) {
+		if (f.isDirectory() && !f.getName().equals("Qualitaetskontrolle")) {
 			for(File file : f.listFiles()) {
 				sWork = fileHandled(drawing, strCode, codeLen, extLen, strExtension, file);
 				if(sWork != null) {
 					return sWork;
 				}
 			}
+		}
+		
+		if (f.getName().endsWith("-Q.pdf")) {
+			return null;
 		}
 		
 		String fileCode, fileExt, dNumberRef;
@@ -146,7 +150,7 @@ public class ReportHelper {
 			int pagesCount = (new PdfHandler()).getPagesCount(f.getPath());
 			if (pagesCount == 0) {
 				logger.warn("A report pdf file is invalid or corrupted (" + f.getName() + ")");
-			} else if (report.getPages().size() != pagesCount) {
+			} else if (report.getPages().size() < pagesCount) {
 				int missing =  Math.abs(pagesCount - report.getPages().size());
 				for (int j = 0; j < missing; j++) {
 					report.addBlankPage().setParent(report);

@@ -108,7 +108,7 @@ public class ExportService {
 			} else if (report instanceof ItemReport) {
 				AbstractResult aRes = irHelper.getXlsFileName((ItemReport) report);
 				if(aRes instanceof SuccessResult) {
-					String fileName = ResultService.getSingleResult(aRes, String.class);
+					String fileName = ResultService.getSingleResult(aRes);
 					return getReportsFolderPath(p).concat("/")
 							.concat(fileName);
 				}
@@ -161,7 +161,7 @@ public class ExportService {
 				} else if (report instanceof ItemReport) {
 					AbstractResult res = irHelper.getXlsFileName((ItemReport) report); 
 					if(res instanceof SuccessResult) {
-						fileName = ResultService.getSingleResult(res, String.class);
+						fileName = ResultService.getSingleResult(res);
 						if (fileName.contains("/"))
 							fileName = fileName.substring(fileName.lastIndexOf("/") + 1);	
 					} else {

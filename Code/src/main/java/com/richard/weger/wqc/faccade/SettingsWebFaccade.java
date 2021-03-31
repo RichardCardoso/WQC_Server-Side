@@ -61,7 +61,7 @@ public class SettingsWebFaccade {
 		mv.addObject("ParamConfigurations", paramConfigurations);
 
 		if (operation.toLowerCase().equals("save")) {
-			AbstractResult res = entityService.postEntity(paramConfigurations, null, paramConfigurations.getClass().getSimpleName(), null);
+			AbstractResult res = entityService.postEntity(paramConfigurations, null, paramConfigurations.getClass().getSimpleName(), null, null);
 			if (res instanceof ErrorResult) {
 				ErrorResult err = ResultService.getErrorResult(res);
 				String message = err.getCode().concat(" - ").concat(err.getDescription());
@@ -148,7 +148,7 @@ public class SettingsWebFaccade {
 			ParamConfigurations conf = configRep.getDefaultConfig();
 			baseRep.setParent(conf);
 			conf.getBaseCheckReports().add(baseRep);
-			AbstractResult res = entityService.postEntity(baseRep, null, baseRep.getClass().getSimpleName(), null);
+			AbstractResult res = entityService.postEntity(baseRep, null, baseRep.getClass().getSimpleName(), null, null);
 			if(res instanceof ErrorResult) {
 				ErrorResult err = ResultService.getErrorResult(res);
 				message = err.getCode().concat(" - ").concat(err.getDescription());

@@ -91,7 +91,7 @@ public class WorkbookHandler {
 		outputFileName = exportService.getReportsFolderPath(project);
 		res = helper.getXlsFileName(report);
 		if(res instanceof SuccessResult) {
-			String sRes = ResultService.getSingleResult(res, String.class);
+			String sRes = ResultService.getSingleResult(res);
 			outputFileName = outputFileName.concat(sRes.replaceAll(".xls", "_tmp.xls"));
 		} else {
 			try {
