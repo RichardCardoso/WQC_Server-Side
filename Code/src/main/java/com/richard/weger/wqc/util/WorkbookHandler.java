@@ -57,7 +57,7 @@ public class WorkbookHandler {
 
 	static AppConstants consts = FactoryAppConstants.getAppConstants();
 
-	public AbstractResult handleWorkbook(ItemReport report) {
+	public AbstractResult handleWorkbook(ItemReport report, String username) {
 		FileHandler fileHandler = new FileHandler();
 		Workbook workbook;
 		WritableWorkbook finalWorkbook;
@@ -70,12 +70,6 @@ public class WorkbookHandler {
 		AbstractResult res;
 		
 		Project project = report.getParent().getParent();
-		String username = report.getLastModifiedBy();
-		if(username != null) {
-			username = username.substring(0, report.getLastModifiedBy().indexOf(" ("));
-		} else {
-			username = "PREVIEW-SYSTEM";
-		}
 
 		ws = new WorkbookSettings();
 		ws.setEncoding("CP1250");

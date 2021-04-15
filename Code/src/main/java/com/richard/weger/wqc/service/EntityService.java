@@ -188,11 +188,8 @@ public class EntityService {
 				}
 				
 				shouldSendUpdateNotice = !(entity instanceof ParamConfigurations || entity instanceof Device);
-				if(entity instanceof Report) {
-					Report r = (Report) entity;
-					if (r.isFinished()) {
-						exportService.export(r);
-					}
+				if(entity instanceof Report || entity instanceof Item) {
+					return new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, "Fatal error. This kind of entity cannot be 'posted'!", ErrorLevel.SEVERE, getClass());
 				} 
 				if (shouldSendUpdateNotice) {
 					if(!Strings.isEmpty(qrcode)) {
@@ -326,7 +323,7 @@ public class EntityService {
 	}
 	
 	@Transactional
-	public AbstractResult reportFinish(Long reportId, boolean finish) {
+	public AbstractResult reportFinish(Long reportId, boolean finish, String deviceid) {
 		
 		AbstractResult res;
 		
@@ -337,11 +334,36 @@ public class EntityService {
 		try {
 			r.setFinished(finish);
 			if (finish) {
-				exportService.export(r);
+				exportService.export(r, deviceid);
 			}
 			rep.save(r);
 		} catch (Exception ex) {
 			res = new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, reportId + "", ErrorLevel.SEVERE, getClass());
+		}
+		
+		return res;
+	}
+	
+	
+	@Transactional
+	public AbstractResult itemUpdate(String deviceid, Long id, String comments, int status) {
+		
+		AbstractResult res;
+
+		try {
+						
+			Item i = (Item) rep.getById(id);
+			Report r = i.getParent(Report.class);
+			
+			lockValidation(r, deviceid);
+			
+			res = new SingleObjectResult<>(Item.class, i);
+		
+			i.setComments(comments);
+			i.setStatus(status);
+			rep.save(i);
+		} catch (Exception ex) {
+			res = new ErrorResult(ErrorCode.ENTITY_PERSIST_FAILED, id + "", ErrorLevel.SEVERE, getClass());
 		}
 		
 		return res;

@@ -206,10 +206,28 @@ public class RestFaccade {
 		AbstractResult res;
 			
 		try {
-			res = entityService.reportFinish(id, finish);
+			res = entityService.reportFinish(id, finish, deviceid);
 			if (finish) {
 				res = entityService.reportLock(id, deviceid, false);
 			}
+		} catch (ObjectOptimisticLockingFailureException ex) {
+			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
+			return entityService.objectlessReturn(err);
+		}
+		
+		return entityService.objectlessSuccessReturn(res);
+	}
+	
+	@RequestMapping(value="/items/update/{id}", method = {RequestMethod.POST, RequestMethod.PUT}, produces = MediaType.APPLICATION_JSON_VALUE)
+	public <T extends DomainEntity> ResponseEntity<T> itemUpdate(  
+			@PathVariable(value="id") Long id, @RequestParam(value = "deviceid") String deviceid, 
+			@RequestParam(value = "comments") String comments,
+			@RequestParam(value = "status") int status) {
+		
+		AbstractResult res;
+			
+		try {
+			res = entityService.itemUpdate(deviceid, id, comments, status);
 		} catch (ObjectOptimisticLockingFailureException ex) {
 			ErrorResult err = new ErrorResult(ErrorCode.STALE_ENTITY, "Your data is stale! Please try again.", ErrorLevel.WARNING, getClass());
 			return entityService.objectlessReturn(err);

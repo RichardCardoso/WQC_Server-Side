@@ -62,14 +62,19 @@ public class ExportService {
 		return path;
 	}
 	
-	@Transactional(readOnly = true)
 	public AbstractResult export(Report report) {
+		
+		return export(report, "PREVIEW-SYSTEM");
+	}
+	
+	@Transactional(readOnly = true)
+	public AbstractResult export(Report report, String deviceid) {
 		if(report == null) {
 			return new ErrorResult(ErrorCode.NULL_ENTITY_RECEIVED, "Null report type received to export!", ErrorLevel.WARNING, getClass());
 		}
 		if(report instanceof ItemReport) {
 			ItemReport ir = (ItemReport) report;
-			return export(ir);
+			return export(ir, deviceid);
 		} else if (report instanceof CheckReport) {
 			CheckReport cr = (CheckReport) report;
 			return export(cr);
@@ -78,9 +83,9 @@ public class ExportService {
 		}
 	}
 	
-	public AbstractResult export(ItemReport report) {
+	public AbstractResult export(ItemReport report, String deviceid) {
 		AbstractResult res;
-		res = wbHandler.handleWorkbook(report);
+		res = wbHandler.handleWorkbook(report, deviceid);
 		if(res instanceof ErrorResult) {
 			return res;
 		} else {
