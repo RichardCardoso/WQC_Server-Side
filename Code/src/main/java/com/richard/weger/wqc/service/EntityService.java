@@ -3,6 +3,7 @@ package com.richard.weger.wqc.service;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
 import javax.persistence.OneToMany;
@@ -30,12 +31,15 @@ import com.google.gson.GsonBuilder;
 import com.richard.weger.wqc.domain.CheckReport;
 import com.richard.weger.wqc.domain.Device;
 import com.richard.weger.wqc.domain.DomainEntity;
+import com.richard.weger.wqc.domain.DrawingRef;
 import com.richard.weger.wqc.domain.Item;
 import com.richard.weger.wqc.domain.ItemReport;
 import com.richard.weger.wqc.domain.Mark;
 import com.richard.weger.wqc.domain.Page;
 import com.richard.weger.wqc.domain.ParamConfigurations;
 import com.richard.weger.wqc.domain.ParentAwareEntity;
+import com.richard.weger.wqc.domain.Part;
+import com.richard.weger.wqc.domain.Project;
 import com.richard.weger.wqc.domain.Report;
 import com.richard.weger.wqc.domain.ReportLock;
 import com.richard.weger.wqc.helper.ProjectHelper;
@@ -43,7 +47,9 @@ import com.richard.weger.wqc.messaging.WebSocketMessagingService;
 import com.richard.weger.wqc.repository.DeviceRepository;
 import com.richard.weger.wqc.repository.DomainEntityRepository;
 import com.richard.weger.wqc.repository.ParentAwareEntityRepository;
+import com.richard.weger.wqc.repository.PartRepository;
 import com.richard.weger.wqc.repository.ReportRepository;
+import com.richard.weger.wqc.repository.projections.PartProjection;
 import com.richard.weger.wqc.result.AbstractResult;
 import com.richard.weger.wqc.result.EmptyResult;
 import com.richard.weger.wqc.result.ErrorResult;
@@ -62,6 +68,7 @@ public class EntityService {
 	@Autowired private ReportRepository reportRep;
 	@Autowired private DeviceRepository deviceRep;
 	@Autowired private DomainEntityRepository rep;
+	@Autowired private PartRepository partRep;
 	@Autowired private ParentAwareEntityRepository parentRep;
 	@Autowired private ExportService exportService;
 	@Autowired private WebSocketMessagingService messagingHandler;
@@ -275,6 +282,17 @@ public class EntityService {
 			}
 		}
 		return new EmptyResult();
+	}
+	
+	public AbstractResult qrList() {
+		
+		List<String> ret;
+		List<PartProjection> parts = partRep.findAllProjectedBy();
+		ret = parts.stream()
+				.map(x -> x.getQrCode())
+				.collect(Collectors.toList());
+		
+		return new MultipleObjectResult<>(String.class, ret);		
 	}
 	
 	public AbstractResult entitiesList(Long parentid, String entityName) {

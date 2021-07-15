@@ -277,7 +277,7 @@ public class FileService {
 	}
 	
 	private File getReportFile(File rootFolder, String targetFilename) {
-		if(rootFolder != null && targetFilename != null) {
+		if(rootFolder != null && targetFilename != null && rootFolder.exists()) {
 			for(File f : rootFolder.listFiles()) {
 				if(f.isDirectory()) {
 					File ret = getReportFile(f, targetFilename);
@@ -289,6 +289,9 @@ public class FileService {
 					return f;
 				}
 			}
+		}
+		if (!rootFolder.exists()) {
+			System.err.println("Root folder '" + rootFolder.getAbsolutePath() + "' does not exist!");
 		}
 		return null;
 	}

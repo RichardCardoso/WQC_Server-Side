@@ -54,21 +54,24 @@ public class SettingsWebFaccade {
 
 	@PostMapping(value = "")
 	public ModelAndView settings(@RequestParam(value = "operation") String operation,
-			@Validated @ModelAttribute("ParamConfigurations") ParamConfigurations paramConfigurations, RedirectAttributes attr) {
+			@Validated @ModelAttribute("ParamConfigurations") ParamConfigurations nConf, RedirectAttributes attr) {
 
 		ModelAndView mv = new ModelAndView("setting");
 		
-		mv.addObject("ParamConfigurations", paramConfigurations);
+		mv.addObject("ParamConfigurations", nConf);
+				
 
 		if (operation.toLowerCase().equals("save")) {
-			AbstractResult res = entityService.postEntity(paramConfigurations, null, paramConfigurations.getClass().getSimpleName(), null, null);
-			if (res instanceof ErrorResult) {
-				ErrorResult err = ResultService.getErrorResult(res);
-				String message = err.getCode().concat(" - ").concat(err.getDescription());
-				attr.addFlashAttribute("message", message);
-			} else {
-				attr.addFlashAttribute("message", "Changes saved!");
-			}
+			
+			ParamConfigurations def = configRep.getDefaultConfig();
+			def.setOriginalDocsPath(nConf.getOriginalDocsPath());
+			def.setControlCardReportCode(nConf.getControlCardReportCode());
+			def.setOriginalDocsExtension(nConf.getOriginalDocsExtension());
+			def.setServerPath(nConf.getServerPath());
+			def.setRootPath(nConf.getRootPath());
+			def.setYearPrefix(nConf.getYearPrefix());
+			configRep.save(def);
+			attr.addFlashAttribute("message", "Changes saved!");
 		} else {
 			attr.addFlashAttribute("message", "Operation cancelled!");
 		}

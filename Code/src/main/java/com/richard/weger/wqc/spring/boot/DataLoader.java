@@ -186,6 +186,10 @@ public class DataLoader implements CommandLineRunner {
 				conf.getBaseCheckReports().add(r);
 				confRep.save(conf);
 			}
+			if (r.getParent(BaseCheckReport.class) == null) {
+				r.setParent(conf);
+				domainRep.save(r);
+			}
 		}
 //		roles = domainRep.getAllByTypeStartingWith(Role.class.getSimpleName());
 //		System.out.println("Existing roles: " + roles.stream().map(Role::getDescription).collect(Collectors.joining(", ")));

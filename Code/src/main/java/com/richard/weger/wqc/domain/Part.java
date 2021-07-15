@@ -5,9 +5,16 @@ import java.util.List;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "parts")
 public class Part extends ParentAwareEntity {
+	
+	@JsonIgnore
+	public DrawingRef getParent() {
+		return super.getParent(DrawingRef.class);
+	}
 	
 	@Override
 	public <T extends ParentAwareEntity> List<T> getChildren() {

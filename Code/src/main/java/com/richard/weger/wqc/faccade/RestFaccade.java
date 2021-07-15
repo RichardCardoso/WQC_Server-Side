@@ -134,17 +134,41 @@ public class RestFaccade {
 			@PathVariable(value = "entity") String entityName
 			) {
 		
-		logger.info(new Date() + " => Requesting entities list");
-		AbstractResult res = entityService.entitiesList(parentid, entityName);
-		
-		if (res instanceof ResultWithContent) {
-			HttpHeaders headers = new HttpHeaders();
-			headers.set("version", entityService.getAppVersion());
-			List<DomainEntity> list = ResultService.getMultipleResult(res, DomainEntity.class);
-			return new ResponseEntity<>(list, headers, HttpStatus.OK);
+		AbstractResult res; 
+		try {
+			logger.info(new Date() + " => Requesting entities list");
+			res = entityService.entitiesList(parentid, entityName);
+			
+			if (res instanceof ResultWithContent) {
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("version", entityService.getAppVersion());
+				List<DomainEntity> list = ResultService.getMultipleResult(res, DomainEntity.class);
+				return new ResponseEntity<>(list, headers, HttpStatus.OK);
+			}
+		} finally {
+			logger.info(new Date() + " => Returning entities list");
 		}
+		return entityService.objectListReturn(res);
 		
-		logger.info(new Date() + " => Returning entities list");		
+	}
+	
+	@GetMapping(value="/qrlist", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<List<String>> qrList() {
+		
+		AbstractResult res;
+		try {
+			logger.info(new Date() + " => Requesting qr list");
+			res = entityService.qrList();
+			
+			if (res instanceof ResultWithContent) {
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("version", entityService.getAppVersion());
+				List<String> list = ResultService.getMultipleResult(res, String.class);
+				return new ResponseEntity<>(list, headers, HttpStatus.OK);
+			}
+		} finally {
+			logger.info(new Date() + " => Returning qr list");
+		}
 		return entityService.objectListReturn(res);
 		
 	}
